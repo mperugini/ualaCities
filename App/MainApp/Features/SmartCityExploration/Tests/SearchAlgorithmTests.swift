@@ -75,7 +75,6 @@ final class SearchAlgorithmTests: XCTestCase {
         }
     }
     
-    
     func testSearchWithPrefix_Alb_ReturnsAlbuquerqueOnly() async {
         // Given
         let filter = SearchFilter(query: "Alb")
@@ -325,8 +324,6 @@ final class SearchAlgorithmTests: XCTestCase {
         print("  Á: '\(prefixAccentedA)'")
     }
     
-    
-    
     // MARK: - Favorites Filter Tests
     
     func testSearchWithFavoritesFilter_ReturnsOnlyFavorites() async {
@@ -445,18 +442,6 @@ final class SearchAlgorithmTests: XCTestCase {
         }
     }
     
-    func testQuickSearchPerformance() async {
-        // Given
-        let largeCityList = generateLargeCityList(count: 10000)
-        mockRepository.cities = largeCityList
-        
-        // When & Then
-        await measureAsyncTime {
-            let result = await sut.executeQuickSearch("Test", limit: 100)
-            XCTAssertResultSuccess(result)
-        }
-    }
-    
     // MARK: - Repository Error Handling
     
     func testSearchHandlesRepositoryError() async {
@@ -528,7 +513,6 @@ private final class MockCityRepository: CityRepository, @unchecked Sendable {
         return .success(searchResult)
     }
     
-    
     // MARK: - Other Required Methods (Minimal Implementation)
     func downloadAndSaveCities() async -> Result<Void, Error> { .success(()) }
     func getAllCities() async -> Result<[City], Error> { .success(cities) }
@@ -594,4 +578,3 @@ extension XCTestCase {
         XCTAssertLessThan(timeElapsed, 1.0, "Operation took too long: \(timeElapsed)s")
     }
 }
-

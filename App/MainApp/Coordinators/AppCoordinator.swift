@@ -31,7 +31,6 @@ final class AppCoordinator {
     private func createMainViewController() -> UIViewController {
         let citySearchView = CitySearchView()
         let hostingController = UIHostingController(rootView: citySearchView)
-        hostingController.title = "Cities"
         
         return hostingController
     }

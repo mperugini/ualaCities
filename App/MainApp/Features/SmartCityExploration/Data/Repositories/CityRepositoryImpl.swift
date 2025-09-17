@@ -89,21 +89,6 @@ public final class CityRepositoryImpl: CityRepository {
         }
     }
     
-    public func searchCitiesWithPrefix(_ prefix: String, limit: Int) async -> Result<[City], Error> {
-        let trimmedPrefix = prefix.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        // Input validation
-        guard trimmedPrefix.count >= SearchConstants.minimumQueryLength || trimmedPrefix.isEmpty else {
-            return .failure(CityRepositoryError.invalidData)
-        }
-        
-        guard trimmedPrefix.count <= SearchConstants.maximumQueryLength else {
-            return .failure(CityRepositoryError.invalidData)
-        }
-        
-        return await localDataSource.searchCitiesWithPrefix(trimmedPrefix, limit: limit)
-    }
-    
     // MARK: - Favorites Management
     public func getFavoriteCities() async -> Result<[City], Error> {
         return await localDataSource.getFavoriteCities()
@@ -285,18 +270,6 @@ public final class MockLocalDataSource: LocalDataSource, @unchecked Sendable {
     public func getAllCities() async -> Result<[City], Error> {
         if shouldFail { return .failure(mockError) }
         return .success(cities.sorted { $0.displayName < $1.displayName })
-    }
-    
-    public func searchCitiesWithPrefix(_ prefix: String, limit: Int) async -> Result<[City], Error> {
-        if shouldFail { return .failure(mockError) }
-        
-        let filtered = cities.filter { city in
-            city.matchesPrefix(prefix, searchInCountry: true)
-        }
-        .sorted { $0.displayName < $1.displayName }
-        .prefix(limit)
-        
-        return .success(Array(filtered))
     }
     
     public func searchCities(with filter: SearchFilter) async -> Result<[City], Error> {

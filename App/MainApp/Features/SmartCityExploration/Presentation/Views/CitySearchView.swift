@@ -19,6 +19,19 @@ public struct CitySearchView: View {
         horizontalSizeClass == .compact
     }
     
+    private var emptyStateType: EmptyStateType {
+        if viewModel.isSearching {
+            return .searching
+        } else if viewModel.showOnlyFavorites {
+            return .favorites
+        } else if let totalCities = viewModel.dataSourceInfo?.totalCities, totalCities > 0 {
+            return .readyToSearch
+        } else {
+            return .general
+        }
+    }
+
+    
     public var body: some View {
         NavigationStack {
             Group {
@@ -28,7 +41,7 @@ public struct CitySearchView: View {
                     combinedView
                 }
             }
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.automatic)
             .refreshable {
                 await viewModel.refreshData()
             }
@@ -187,7 +200,7 @@ public struct CitySearchView: View {
             }
             
             if viewModel.displayedCities.isEmpty && !viewModel.isSearchLoading {
-                emptyStateView
+                EmptyStateView(type: emptyStateType)
             }
         }
         .listStyle(.plain)
@@ -227,46 +240,6 @@ public struct CitySearchView: View {
         .background(Color(.systemBackground))
     }
     
-    // MARK: - Empty State
-    private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: viewModel.isSearching ? "magnifyingglass" : "building.2")
-                .font(.system(size: 48))
-                .foregroundColor(.secondary)
-            
-            Text(emptyStateTitle)
-                .font(.headline)
-                .foregroundColor(.secondary)
-            
-            Text(emptyStateMessage)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .padding(40)
-        .frame(maxWidth: .infinity)
-    }
-    
-    private var emptyStateTitle: String {
-        if viewModel.isSearching {
-            return "No Cities Found"
-        } else if viewModel.showOnlyFavorites {
-            return "No Favorite Cities"
-        } else {
-            return "No Cities Available"
-        }
-    }
-    
-    private var emptyStateMessage: String {
-        if viewModel.isSearching {
-            return "Try adjusting your search terms or check the spelling."
-        } else if viewModel.showOnlyFavorites {
-            return "Add cities to your favorites by tapping the heart icon."
-        } else {
-            return "Pull down to refresh or check your internet connection."
-        }
-    }
-    
     // MARK: - Navigation
     private func navigateToMap(_ city: City) {
         // In portrait mode, show the city detail view
@@ -274,53 +247,7 @@ public struct CitySearchView: View {
     }
 }
 
-// MARK: - City Row View
-private struct CityRowView: View {
-    let city: City
-    let onFavoriteToggle: () -> Void
-    let onCityTap: () -> Void
-    let onInfoTap: () -> Void
-    
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                // City and country name (title)
-                Text(city.displayName)
-                    .font(.headline)
-                    .foregroundColor(.primary)
-                
-                // Coordinates (subtitle)
-                Text(city.coord.displayString)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            HStack(spacing: 12) {
-                // Info button
-                Button(action: onInfoTap) {
-                    Image(systemName: "info.circle")
-                        .font(.title3)
-                        .foregroundColor(.blue)
-                }
-                .buttonStyle(.plain)
-                
-                // Favorite toggle
-                Button(action: onFavoriteToggle) {
-                    Image(systemName: city.isFavorite ? "heart.fill" : "heart")
-                        .font(.title3)
-                        .foregroundColor(city.isFavorite ? .red : .gray)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            onCityTap()
-        }
-    }
-}
+
 
 // MARK: - Preview
 #if DEBUG

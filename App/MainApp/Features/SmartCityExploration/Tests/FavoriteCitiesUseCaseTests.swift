@@ -295,10 +295,6 @@ private final class MockCityRepository: CityRepository, @unchecked Sendable {
         return .success(SearchResult(cities: [], totalCount: 0, query: "", searchTime: 0))
     }
     
-    func searchCitiesWithPrefix(_ prefix: String, limit: Int) async -> Result<[City], Error> {
-        if shouldFail { return .failure(error) }
-        return .success([])
-    }
     
     func addToFavorites(_ city: City) async -> Result<City, Error> {
         if shouldFail { return .failure(error) }

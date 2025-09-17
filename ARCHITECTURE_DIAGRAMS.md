@@ -1,17 +1,23 @@
 # ualaCities - Architecture Diagrams
 
-Este documento contiene los diagramas de arquitectura del proyecto SmartCityExploration, implementando Clean Architecture con MVVM pattern.
+Este documento contiene los diagramas de arquitectura del proyecto SmartCityExploration, implementando Clean Architecture con MVVM y Composition Pattern.
 
 ## 🏗️ Clean Architecture Overview
 
 ```mermaid
 graph TB
-    subgraph "📱 Presentation Layer"
+    subgraph "📱 Presentation Layer (Especializada)"
         V[CitySearchView]
-        VM[CitySearchViewModel]
+        COORD[CitySearchCoordinator]
+        SVM[SearchViewModel]
+        FVM[FavoritesViewModel]
+        DVM[DataLoadingViewModel]
+        EVM[ErrorHandlingViewModel]
+        SBV[SearchBarView]
+        CLV[CityListView]
         DV[CityDetailView]
         MV[CityMapView]
-        F[ViewModelFactory]
+        UC[UseCaseContainer]
     end
     
     subgraph "🔧 Domain Layer"
@@ -37,14 +43,20 @@ graph TB
         CD[(Core Data)]
     end
     
-    %% Presentation Dependencies
-    V --> VM
-    VM --> UC1
-    VM --> UC2
-    VM --> UC3
-    F --> UC1
-    F --> UC2
-    F --> UC3
+    %% Presentation Dependencies (Refactorizada)
+    V --> COORD
+    COORD --> SVM
+    COORD --> FVM
+    COORD --> DVM
+    COORD --> EVM
+    COORD --> UC
+    SBV --> SVM
+    CLV --> COORD
+    
+    %% Use Case Dependencies
+    UC --> UC1
+    UC --> UC2
+    UC --> UC3
     
     %% Domain Dependencies
     UC1 --> R
@@ -67,17 +79,21 @@ graph TB
     
     %% Styling
     classDef presentation fill:#e1f5fe
-    classDef domain fill:#f3e5f5
-    classDef data fill:#e8f5e8
-    classDef external fill:#fff3e0
+    classDef coordinator fill:#e8eaf6
+    classDef viewmodel fill:#f3e5f5
+    classDef domain fill:#e8f5e8
+    classDef data fill:#fff3e0
+    classDef external fill:#ffebee
     
-    class V,VM,DV,MV,F presentation
+    class V,SBV,CLV,DV,MV presentation
+    class COORD coordinator
+    class SVM,FVM,DVM,EVM viewmodel
     class UC1,UC2,UC3,E1,E2,E3,R domain
     class RI,LDS,RDS,CS,NS data
     class API,CD external
 ```
 
-## 📱 Presentation Layer Architecture
+## 📱 Presentation Layer Architecture 
 
 ```mermaid
 graph TB
@@ -85,66 +101,127 @@ graph TB
         CSV[CitySearchView]
         CDV[CityDetailView]
         CMV[CityMapView]
-        CMP[CityMapPin Component]
-        IR[InfoRow Component]
+        SBV[SearchBarView Component]
+        CLV[CityListView Component]
     end
     
-    subgraph "ViewModels (@MainActor)"
-        CSVM[CitySearchViewModel]
+    subgraph "CitySearchCoordinator (Composition Pattern)"
+        COORD[CitySearchCoordinator]
         
-        subgraph "ViewModel State"
-            ST1[searchText: String]
-            ST2[cities: [City]]
-            ST3[favorites: [City]]
-            ST4[isLoading: Bool]
-            ST5[searchResults: [City]]
-            ST6[dataSourceInfo: DataSourceInfo?]
+        subgraph "Coordinator State"
+            CS1[displayedCities: [City]]
+            CS2[isSearching: Bool]
         end
         
-        subgraph "ViewModel Methods"
-            M1[loadInitialData()]
-            M2[performSearch()]
-            M3[toggleFavorite()]
-            M4[refreshData()]
-            M5[clearSearch()]
+        subgraph "Coordinator Methods"
+            CM1[loadInitialData()]
+            CM2[refreshData()]
+            CM3[toggleFavorite()]
+            CM4[toggleFavoritesFilter()]
+            CM5[clearSearch()]
         end
     end
     
-    subgraph "Factory Pattern"
-        VMF[CitySearchViewModelFactory]
-        RF[CityRepositoryFactory]
+    subgraph "Specialized ViewModels (@MainActor)"
+        SVM[SearchViewModel]
+        FVM[FavoritesViewModel]
+        DVM[DataLoadingViewModel]
+        EVM[ErrorHandlingViewModel]
+        
+        subgraph "SearchViewModel State"
+            SS1[searchText: String]
+            SS2[searchResults: [City]]
+            SS3[isSearching: Bool]
+            SS4[isSearchLoading: Bool]
+        end
+        
+        subgraph "FavoritesViewModel State"
+            FS1[favorites: [City]]
+            FS2[showOnlyFavorites: Bool]
+        end
+        
+        subgraph "DataLoadingViewModel State"
+            DS1[cities: [City]]
+            DS2[isLoading: Bool]
+            DS3[isInitialLoading: Bool]
+            DS4[isRefreshing: Bool]
+            DS5[dataSourceInfo: DataSourceInfo?]
+        end
+        
+        subgraph "ErrorHandlingViewModel State"
+            ES1[errorMessage: String?]
+            ES2[showError: Bool]
+            ES3[lastError: Error?]
+        end
     end
     
-    CSV --> CSVM
-    CDV --> CSVM
-    CMV --> CSVM
-    CMP --> CSVM
+    subgraph "UseCaseContainer (Dependency Injection)"
+        UC[UseCaseContainer]
+        
+        subgraph "Use Cases"
+            UC1[SearchCitiesUseCase]
+            UC2[FavoriteCitiesUseCase]
+            UC3[LoadCitiesUseCase]
+        end
+    end
     
-    CSVM --> ST1
-    CSVM --> ST2
-    CSVM --> ST3
-    CSVM --> ST4
-    CSVM --> ST5
-    CSVM --> ST6
+    %% View Dependencies
+    CSV --> COORD
+    CDV --> COORD
+    CMV --> COORD
+    SBV --> SVM
+    CLV --> COORD
     
-    CSVM --> M1
-    CSVM --> M2
-    CSVM --> M3
-    CSVM --> M4
-    CSVM --> M5
+    %% Coordinator Dependencies
+    COORD --> SVM
+    COORD --> FVM
+    COORD --> DVM
+    COORD --> EVM
+    COORD --> UC
     
-    VMF --> CSVM
-    VMF --> RF
+    %% UseCaseContainer Dependencies
+    UC --> UC1
+    UC --> UC2
+    UC --> UC3
+    
+    %% State Management
+    COORD --> CS1
+    COORD --> CS2
+    COORD --> CM1
+    COORD --> CM2
+    COORD --> CM3
+    COORD --> CM4
+    COORD --> CM5
+    
+    SVM --> SS1
+    SVM --> SS2
+    SVM --> SS3
+    SVM --> SS4
+    
+    FVM --> FS1
+    FVM --> FS2
+    
+    DVM --> DS1
+    DVM --> DS2
+    DVM --> DS3
+    DVM --> DS4
+    DVM --> DS5
+    
+    EVM --> ES1
+    EVM --> ES2
+    EVM --> ES3
     
     classDef view fill:#e1f5fe
-    classDef viewmodel fill:#e8eaf6
-    classDef state fill:#f3e5f5
-    classDef factory fill:#e0f2f1
+    classDef coordinator fill:#e8eaf6
+    classDef viewmodel fill:#f3e5f5
+    classDef container fill:#e8f5e8
+    classDef state fill:#fce4ec
     
-    class CSV,CDV,CMV,CMP,IR view
-    class CSVM viewmodel
-    class ST1,ST2,ST3,ST4,ST5,ST6,M1,M2,M3,M4,M5 state
-    class VMF,RF factory
+    class CSV,CDV,CMV,SBV,CLV view
+    class COORD coordinator
+    class SVM,FVM,DVM,EVM viewmodel
+    class UC,UC1,UC2,UC3 container
+    class CS1,CS2,CM1,CM2,CM3,CM4,CM5,SS1,SS2,SS3,SS4,FS1,FS2,DS1,DS2,DS3,DS4,DS5,ES1,ES2,ES3 state
 ```
 
 ## 🔧 Domain Layer Architecture
@@ -214,6 +291,16 @@ graph TB
         end
     end
     
+    subgraph "UseCaseContainer (Dependency Injection)"
+        UC[UseCaseContainer]
+        
+        subgraph "Container Features"
+            C1[Centralized dependency creation]
+            C2[Mock support for testing]
+            C3[Factory pattern implementation]
+        end
+    end
+    
     LUC --> L1
     LUC --> L2
     LUC --> L3
@@ -258,15 +345,24 @@ graph TB
     RP --> RM4
     RP --> RM5
     
+    UC --> LUC
+    UC --> SUC
+    UC --> FUC
+    UC --> C1
+    UC --> C2
+    UC --> C3
+    
     classDef usecase fill:#f3e5f5
     classDef entity fill:#e8f5e8
     classDef protocol fill:#fff3e0
+    classDef container fill:#e1f5fe
     classDef logic fill:#fce4ec
     
     class LUC,SUC,FUC usecase
     class CE,SF,DSI,CO entity
     class RP protocol
-    class L1,L2,L3,L4,S1,S2,S3,S4,F1,F2,F3,F4,CP1,CP2,CP3,CP4,CP5,CP6,CP7,SP1,SP2,SP3,SP4,RM1,RM2,RM3,RM4,RM5 logic
+    class UC container
+    class L1,L2,L3,L4,S1,S2,S3,S4,F1,F2,F3,F4,CP1,CP2,CP3,CP4,CP5,CP6,CP7,SP1,SP2,SP3,SP4,RM1,RM2,RM3,RM4,RM5,C1,C2,C3 logic
 ```
 
 ## 💾 Data Layer Architecture
@@ -414,14 +510,28 @@ graph LR
         UI4[App Launch]
     end
     
-    subgraph "ViewModel Layer"
-        VM[CitySearchViewModel]
+    subgraph "CitySearchCoordinator (Composition)"
+        COORD[CitySearchCoordinator]
         
-        subgraph "ViewModel State Management"
-            S1[Published Properties]
-            S2[Loading States]
-            S3[Error Handling]
-            S4[Debouncing Logic]
+        subgraph "Coordination Logic"
+            CL1[Update displayedCities]
+            CL2[Coordinate ViewModels]
+            CL3[Handle callbacks]
+            CL4[Manage state transitions]
+        end
+    end
+    
+    subgraph "Specialized ViewModels"
+        SVM[SearchViewModel]
+        FVM[FavoritesViewModel]
+        DVM[DataLoadingViewModel]
+        EVM[ErrorHandlingViewModel]
+        
+        subgraph "ViewModel Responsibilities"
+            VR1[Search: Debouncing, validation]
+            VR2[Favorites: Toggle, limits]
+            VR3[Data: Loading, caching]
+            VR4[Errors: Display, handling]
         end
     end
     
@@ -457,19 +567,29 @@ graph LR
         UD[UserDefaults]
     end
     
-    UI1 --> VM
-    UI2 --> VM
-    UI3 --> VM
-    UI4 --> VM
+    UI1 --> COORD
+    UI2 --> COORD
+    UI3 --> COORD
+    UI4 --> COORD
     
-    VM --> S1
-    VM --> S2
-    VM --> S3
-    VM --> S4
+    COORD --> CL1
+    COORD --> CL2
+    COORD --> CL3
+    COORD --> CL4
     
-    VM --> UC1
-    VM --> UC2
-    VM --> UC3
+    COORD --> SVM
+    COORD --> FVM
+    COORD --> DVM
+    COORD --> EVM
+    
+    SVM --> VR1
+    FVM --> VR2
+    DVM --> VR3
+    EVM --> VR4
+    
+    SVM --> UC2
+    FVM --> UC3
+    DVM --> UC1
     
     UC1 --> BR1
     UC2 --> BR2
@@ -493,36 +613,53 @@ graph LR
     REMOTE --> API
     
     classDef ui fill:#e1f5fe
-    classDef viewmodel fill:#e8eaf6
-    classDef usecase fill:#f3e5f5
-    classDef data fill:#e8f5e8
-    classDef storage fill:#fff3e0
+    classDef coordinator fill:#e8eaf6
+    classDef viewmodel fill:#f3e5f5
+    classDef usecase fill:#e8f5e8
+    classDef data fill:#fff3e0
+    classDef storage fill:#ffebee
     classDef rules fill:#fce4ec
     
     class UI1,UI2,UI3,UI4 ui
-    class VM,S1,S2,S3,S4 viewmodel
+    class COORD,CL1,CL2,CL3,CL4 coordinator
+    class SVM,FVM,DVM,EVM,VR1,VR2,VR3,VR4 viewmodel
     class UC1,UC2,UC3 usecase
     class REPO,LOCAL,REMOTE,DO1,DO2,DO3,DO4 data
     class CD,API,UD storage
     class BR1,BR2,BR3,BR4 rules
 ```
 
-## 🎯 Dependency Injection Architecture
+## 🎯 Dependency Injection Architecture 
 
 ```mermaid
 graph TB
-    subgraph "Factory Layer"
-        VMF[CitySearchViewModelFactory]
-        RF[CityRepositoryFactory]
+    subgraph "UseCaseContainer (Centralized DI)"
+        UC[UseCaseContainer]
         
-        subgraph "Factory Methods"
-            F1[create(): Production]
-            F2[createMock(): Testing]
+        subgraph "Container Methods"
+            CM1[create(): Production]
+            CM2[createMock(): Testing]
         end
     end
     
-    subgraph "Dependency Graph"
-        VM[CitySearchViewModel]
+    subgraph "CitySearchCoordinator Factory"
+        CF[CitySearchCoordinatorFactory]
+        
+        subgraph "Factory Methods"
+            FM1[create(): Production]
+            FM2[createMock(): Testing]
+        end
+    end
+    
+    subgraph "Dependency Graph (Refactorizada)"
+        COORD[CitySearchCoordinator]
+        
+        subgraph "Specialized ViewModels"
+            SVM[SearchViewModel]
+            FVM[FavoritesViewModel]
+            DVM[DataLoadingViewModel]
+            EVM[ErrorHandlingViewModel]
+        end
         
         subgraph "Use Cases"
             UC1[LoadCitiesUseCase]
@@ -557,14 +694,23 @@ graph TB
     end
     
     %% Production Dependencies
-    VMF --> F1
-    VMF --> F2
-    VMF --> RF
+    CF --> FM1
+    CF --> FM2
+    CF --> UC
     
-    F1 --> VM
-    VM --> UC1
-    VM --> UC2
-    VM --> UC3
+    UC --> CM1
+    UC --> CM2
+    
+    FM1 --> COORD
+    COORD --> SVM
+    COORD --> FVM
+    COORD --> DVM
+    COORD --> EVM
+    
+    SVM --> UC2
+    FVM --> UC3
+    DVM --> UC1
+    EVM --> UC1
     
     UC1 --> REPO
     UC2 --> REPO
@@ -577,24 +723,25 @@ graph TB
     REMOTE --> NS
     
     %% Test Dependencies
-    F2 --> TMF
+    FM2 --> TMF
     TMF --> MUC1
     TMF --> MUC2
     TMF --> MUC3
     TMF --> MREPO
     
     %% Alternative test injection
-    VM -.-> MUC1
-    VM -.-> MUC2
-    VM -.-> MUC3
+    COORD -.-> MUC1
+    COORD -.-> MUC2
+    COORD -.-> MUC3
     
-    classDef factory fill:#e1f5fe
-    classDef production fill:#e8f5e8
+    classDef container fill:#e1f5fe
+    classDef factory fill:#e8f5e8
+    classDef production fill:#f3e5f5
     classDef testing fill:#fff3e0
     classDef mock fill:#ffebee
     
-    class VMF,RF,F1,F2 factory
-    class VM,UC1,UC2,UC3,REPO,LOCAL,REMOTE,CDS,NS production
+    class UC,CF,CM1,CM2,FM1,FM2 container
+    class COORD,SVM,FVM,DVM,EVM,UC1,UC2,UC3,REPO,LOCAL,REMOTE,CDS,NS production
     class TMF testing
     class MUC1,MUC2,MUC3,MREPO mock
 ```
@@ -608,10 +755,9 @@ graph TB
         
         subgraph "View Hierarchy"
             VH1[NavigationStack]
-            VH2[SearchBar]
-            VH3[List/LazyVStack]
-            VH4[CityRow Components]
-            VH5[Loading/Error States]
+            VH2[SearchBarView Component]
+            VH3[CityListView Component]
+            VH4[Loading/Error States]
         end
         
         subgraph "View Modifiers"
@@ -622,31 +768,34 @@ graph TB
         end
     end
     
-    subgraph "ViewModel (@MainActor)"
-        VM[CitySearchViewModel]
+    subgraph "CitySearchCoordinator (@MainActor)"
+        COORD[CitySearchCoordinator]
         
         subgraph "@Published Properties"
-            P1[searchText: String]
-            P2[cities: [City]]
-            P3[favorites: [City]]
-            P4[isLoading: Bool]
-            P5[searchResults: [City]]
-            P6[showError: Bool]
-            P7[errorMessage: String?]
+            P1[displayedCities: [City]]
+            P2[isSearching: Bool]
         end
         
-        subgraph "Computed Properties"
-            CP1[displayedCities: [City]]
-            CP2[isSearching: Bool]
-            CP3[hasSearchResults: Bool]
+        subgraph "Coordination Methods"
+            CM1[loadInitialData()]
+            CM2[refreshData()]
+            CM3[toggleFavorite()]
+            CM4[toggleFavoritesFilter()]
+            CM5[clearSearch()]
         end
+    end
+    
+    subgraph "Specialized ViewModels"
+        SVM[SearchViewModel]
+        FVM[FavoritesViewModel]
+        DVM[DataLoadingViewModel]
+        EVM[ErrorHandlingViewModel]
         
-        subgraph "Action Methods"
-            A1[loadInitialData()]
-            A2[performSearch()]
-            A3[toggleFavorite()]
-            A4[clearSearch()]
-            A5[refreshData()]
+        subgraph "ViewModel States"
+            VS1[searchText, searchResults]
+            VS2[favorites, showOnlyFavorites]
+            VS3[cities, isLoading, dataSourceInfo]
+            VS4[errorMessage, showError]
         end
     end
     
@@ -668,36 +817,35 @@ graph TB
     CSV --> VH2
     CSV --> VH3
     CSV --> VH4
-    CSV --> VH5
     
     CSV --> MOD1
     CSV --> MOD2
     CSV --> MOD3
     CSV --> MOD4
     
-    CSV --> VM
+    CSV --> COORD
     
-    VM --> P1
-    VM --> P2
-    VM --> P3
-    VM --> P4
-    VM --> P5
-    VM --> P6
-    VM --> P7
+    COORD --> P1
+    COORD --> P2
+    COORD --> CM1
+    COORD --> CM2
+    COORD --> CM3
+    COORD --> CM4
+    COORD --> CM5
     
-    VM --> CP1
-    VM --> CP2
-    VM --> CP3
+    COORD --> SVM
+    COORD --> FVM
+    COORD --> DVM
+    COORD --> EVM
     
-    VM --> A1
-    VM --> A2
-    VM --> A3
-    VM --> A4
-    VM --> A5
+    SVM --> VS1
+    FVM --> VS2
+    DVM --> VS3
+    EVM --> VS4
     
     VH2 --> BIND1
     CSV --> BIND2
-    VM --> BIND3
+    COORD --> BIND3
     BIND3 --> BIND4
     
     CSV --> LIFE1
@@ -705,36 +853,39 @@ graph TB
     CSV --> LIFE3
     CSV --> LIFE4
     
-    LIFE1 --> A1
-    LIFE2 --> A1
-    LIFE3 --> A2
-    LIFE4 --> A5
+    LIFE1 --> CM1
+    LIFE2 --> CM1
+    LIFE3 --> CM4
+    LIFE4 --> CM2
     
     classDef view fill:#e1f5fe
-    classDef viewmodel fill:#e8eaf6
-    classDef binding fill:#f3e5f5
-    classDef lifecycle fill:#e8f5e8
+    classDef coordinator fill:#e8eaf6
+    classDef viewmodel fill:#f3e5f5
+    classDef binding fill:#e8f5e8
+    classDef lifecycle fill:#fff3e0
     classDef property fill:#fce4ec
     
-    class CSV,VH1,VH2,VH3,VH4,VH5,MOD1,MOD2,MOD3,MOD4 view
-    class VM viewmodel
+    class CSV,VH1,VH2,VH3,VH4,MOD1,MOD2,MOD3,MOD4 view
+    class COORD coordinator
+    class SVM,FVM,DVM,EVM viewmodel
     class BIND1,BIND2,BIND3,BIND4 binding
     class LIFE1,LIFE2,LIFE3,LIFE4 lifecycle
-    class P1,P2,P3,P4,P5,P6,P7,CP1,CP2,CP3,A1,A2,A3,A4,A5 property
+    class P1,P2,CM1,CM2,CM3,CM4,CM5,VS1,VS2,VS3,VS4 property
 ```
 
 ---
 
-## 📋 Architecture Summary
+## 📋 Architecture Summary 
 
 ### Key Architectural Decisions
 
 1. **Clean Architecture**: Clear separation between Presentation, Domain, and Data layers
-2. **MVVM Pattern**: ViewModels manage UI state and business logic coordination
-3. **Dependency Injection**: Manual DI with Factory pattern for testability
-4. **Swift 6 Concurrency**: @MainActor for UI, background tasks for data operations
-5. **Repository Pattern**: Abstract data access with multiple data sources
-6. **Use Case Pattern**: Encapsulate business rules and validation logic
+2. **MVVM Especializado**: ViewModels with single responsibility principle
+3. **Composition Pattern**: CitySearchCoordinator composes specialized ViewModels
+4. **Dependency Injection**: UseCaseContainer for centralized dependency management
+5. **Swift 6 Concurrency**: @MainActor for UI, background tasks for data operations
+6. **Repository Pattern**: Abstract data access with multiple data sources
+7. **Use Case Pattern**: Encapsulate business rules and validation logic
 
 ### Performance Optimizations
 
@@ -743,10 +894,12 @@ graph TB
 3. **Background Processing**: Keep UI responsive during data operations
 4. **Smart Caching**: 24-hour TTL with fallback to local data
 5. **Optimized Queries**: Prioritized search (city → country)
+6. **ViewModels Especializados**: Better memory management and performance
 
 ### Testing Strategy
 
 1. **Unit Tests**: Isolated testing with mock dependencies
 2. **Use Case Tests**: Business logic validation
-3. **ViewModel Tests**: State management and UI interactions
-4. **Integration Tests**: End-to-end data flow validation
+3. **ViewModel Tests**: Specialized ViewModels testing
+4. **Coordinator Tests**: Integration between ViewModels
+5. **Integration Tests**: End-to-end data flow validation

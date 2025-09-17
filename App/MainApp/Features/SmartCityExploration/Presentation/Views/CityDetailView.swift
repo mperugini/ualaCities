@@ -199,7 +199,7 @@ public struct CityDetailView: View {
     
     // MARK: - Helper Methods
     private func flagEmoji(for countryCode: String) -> String {
-        // Simple mapping for common countries (in production, use proper flag library)
+        // ToDo implement flag library
         let countryFlags: [String: String] = [
             "US": "🇺🇸", "GB": "🇬🇧", "CA": "🇨🇦", "AU": "🇦🇺", "FR": "🇫🇷",
             "DE": "🇩🇪", "IT": "🇮🇹", "ES": "🇪🇸", "JP": "🇯🇵", "CN": "🇨🇳",

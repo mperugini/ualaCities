@@ -14,7 +14,6 @@ public protocol LocalDataSource: Sendable {
     
     // MARK: - Search Operations  
     func getAllCities() async -> Result<[City], Error>
-    func searchCitiesWithPrefix(_ prefix: String, limit: Int) async -> Result<[City], Error>
     func searchCities(with filter: SearchFilter) async -> Result<[City], Error>
     
     // MARK: - Individual City Operations

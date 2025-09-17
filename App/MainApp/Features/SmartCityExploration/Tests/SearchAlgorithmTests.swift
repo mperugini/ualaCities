@@ -528,21 +528,6 @@ private final class MockCityRepository: CityRepository, @unchecked Sendable {
         return .success(searchResult)
     }
     
-    func searchCitiesWithPrefix(_ prefix: String, limit: Int) async -> Result<[City], Error> {
-        if shouldFail {
-            return .failure(mockError)
-        }
-        
-        let query = prefix.lowercased()
-        let filtered = cities
-            .filter { city in
-                city.matchesPrefix(query, searchInCountry: true)
-            }
-            .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
-            .prefix(limit)
-        
-        return .success(Array(filtered))
-    }
     
     // MARK: - Other Required Methods (Minimal Implementation)
     func downloadAndSaveCities() async -> Result<Void, Error> { .success(()) }

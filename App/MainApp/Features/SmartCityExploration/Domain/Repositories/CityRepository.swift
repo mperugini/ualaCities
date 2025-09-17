@@ -14,7 +14,6 @@ public protocol CityRepository: Sendable {
     
     // MARK: - Search Operations 
     func searchCities(with filter: SearchFilter) async -> Result<SearchResult, Error>
-    func searchCitiesWithPrefix(_ prefix: String, limit: Int) async -> Result<[City], Error>
     
     // MARK: - Favorites Management
     func getFavoriteCities() async -> Result<[City], Error>

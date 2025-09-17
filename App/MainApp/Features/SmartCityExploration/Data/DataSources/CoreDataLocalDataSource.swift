@@ -100,49 +100,6 @@ public final class CoreDataLocalDataSource: LocalDataSource {
         }
     }
     
-    public func searchCitiesWithPrefix(_ prefix: String, limit: Int) async -> Result<[City], Error> {
-        guard !prefix.isEmpty else {
-            return await getAllCities()
-        }
-        
-        let startTime = CFAbsoluteTimeGetCurrent()
-        
-        do {
-            let cities = try await coreDataStack.performBackgroundTask { context in
-                // First: fetch cities that match by name (searchableText)
-                let cityNameRequest = CityEntity.fetchRequestForCityNamePrefixSearch(query: prefix, limit: limit)
-                let cityNameEntities = try context.fetch(cityNameRequest)
-                let cityNameResults = cityNameEntities.map { $0.toDomain() }
-                
-                // Get IDs of cities already found to avoid duplicates
-                let foundIds = cityNameEntities.map { $0.id }
-                
-                // Second: fetch cities that match by country (excluding already found ones)
-                let remainingLimit = max(0, limit - cityNameResults.count)
-                if remainingLimit > 0 {
-                    let countryRequest = CityEntity.fetchRequestForCountryPrefixSearch(
-                        query: prefix, 
-                        excludingIds: foundIds, 
-                        limit: remainingLimit
-                    )
-                    let countryEntities = try context.fetch(countryRequest)
-                    let countryResults = countryEntities.map { $0.toDomain() }
-                    
-                    // Combine results: city name matches first, then country matches
-                    return cityNameResults + countryResults
-                } else {
-                    return cityNameResults
-                }
-            }
-            
-            let searchTime = CFAbsoluteTimeGetCurrent() - startTime
-            print("Found \(cities.count) cities for '\(prefix)' in \(String(format: "%.4f", searchTime))s (city matches first)")
-            
-            return .success(cities)
-        } catch {
-            return .failure(CoreDataError.fetchFailed(underlying: error))
-        }
-    }
     
     public func searchCities(with filter: SearchFilter) async -> Result<[City], Error> {
        // let startTime = CFAbsoluteTimeGetCurrent()

@@ -8,7 +8,6 @@ import Foundation
 // MARK: - Use Case Protocol (Single Responsibility Principle)
 public protocol SearchCitiesUseCaseProtocol: Sendable {
     func execute(with filter: SearchFilter) async -> Result<SearchResult, Error>
-    func executeQuickSearch(_ query: String, limit: Int) async -> Result<[City], Error>
 }
 
 // MARK: - Search Cities Use Case Implementation
@@ -58,36 +57,6 @@ public final class SearchCitiesUseCase: SearchCitiesUseCaseProtocol {
         
         // Perform the search
         return await repository.searchCities(with: filter)
-    }
-    
-    public func executeQuickSearch(_ query: String, limit: Int = SearchConstants.defaultResultLimit) async -> Result<[City], Error> {
-        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        // Business rule: Allow empty query for "show all" functionality
-        if trimmedQuery.isEmpty {
-            let result = await repository.getAllCities()
-            
-            switch result {
-            case .success(let cities):
-                // Apply limit to prevent UI performance issues
-                let limitedCities = Array(cities.prefix(limit))
-                return .success(limitedCities)
-                
-            case .failure(let error):
-                return .failure(SearchUseCaseError.searchFailed(error))
-            }
-        }
-        
-        // Validate query length
-        guard trimmedQuery.count >= SearchConstants.minimumQueryLength else {
-            return .failure(SearchUseCaseError.queryTooShort(minimum: SearchConstants.minimumQueryLength))
-        }
-        
-        guard trimmedQuery.count <= SearchConstants.maximumQueryLength else {
-            return .failure(SearchUseCaseError.queryTooLong(maximum: SearchConstants.maximumQueryLength))
-        }
-        
-        return await repository.searchCitiesWithPrefix(trimmedQuery, limit: limit)
     }
 }
 

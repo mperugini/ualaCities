@@ -11,6 +11,7 @@ public struct CitySearchView: View {
     
     @StateObject private var viewModel = CitySearchViewModelFactory.create()
     @State private var selectedCity: City?
+    @State private var cityToShowDetail: City?
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     // MARK: - Layout Configuration
@@ -43,10 +44,15 @@ public struct CitySearchView: View {
                     Text(errorMessage)
                 }
             }
-            .sheet(item: $selectedCity) { city in
+            .sheet(item: $cityToShowDetail) { city in
                 CityDetailView(city: city)
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
+            }
+            .onChange(of: selectedCity) { _, newCity in
+                if let city = newCity, isCompact {
+                    cityToShowDetail = city
+                }
             }
         }
     }
@@ -161,7 +167,7 @@ public struct CitySearchView: View {
                         }
                     },
                     onInfoTap: {
-                        selectedCity = city
+                        cityToShowDetail = city
                     }
                 )
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))

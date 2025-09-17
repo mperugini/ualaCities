@@ -60,17 +60,6 @@ public struct CityMapView: View {
                     Spacer()
                     
                     VStack(spacing: 8) {
-                        // Reset zoom button
-                        Button(action: resetMapView) {
-                            Image(systemName: "globe")
-                                .font(.title2)
-                                .foregroundColor(.primary)
-                                .frame(width: 44, height: 44)
-                                .background(Color(.systemBackground))
-                                .clipShape(Circle())
-                                .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
-                        }
-                        
                         // Center on selected city
                         if let selectedCity = selectedCity {
                             Button(action: { animateToCity(selectedCity) }) {
@@ -83,6 +72,19 @@ public struct CityMapView: View {
                                     .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
                             }
                         }
+                        
+                        // Reset zoom button
+                        Button(action: resetMapView) {
+                            Image(systemName: "globe")
+                                .font(.title2)
+                                .foregroundColor(.primary)
+                                .frame(width: 44, height: 44)
+                                .background(Color(.systemBackground))
+                                .clipShape(Circle())
+                                .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
+                        }
+                        
+                       
                     }
                     .padding(.trailing, 16)
                     .padding(.bottom, 16)

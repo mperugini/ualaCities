@@ -247,53 +247,7 @@ public struct CitySearchView: View {
     }
 }
 
-// MARK: - City Row View
-private struct CityRowView: View {
-    let city: City
-    let onFavoriteToggle: () -> Void
-    let onCityTap: () -> Void
-    let onInfoTap: () -> Void
-    
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                // City and country name (title)
-                Text(city.displayName)
-                    .font(.headline)
-                    .foregroundColor(.primary)
-                
-                // Coordinates (subtitle)
-                Text(city.coord.displayString)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            HStack(spacing: 12) {
-                // Info button
-                Button(action: onInfoTap) {
-                    Image(systemName: "info.circle")
-                        .font(.title3)
-                        .foregroundColor(.blue)
-                }
-                .buttonStyle(.plain)
-                
-                // Favorite toggle
-                Button(action: onFavoriteToggle) {
-                    Image(systemName: city.isFavorite ? "heart.fill" : "heart")
-                        .font(.title3)
-                        .foregroundColor(city.isFavorite ? .red : .gray)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            onCityTap()
-        }
-    }
-}
+
 
 // MARK: - Preview
 #if DEBUG

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="23788.4" systemVersion="24F74" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="CityEntity" representedClassName="CityEntity" syncable="YES">
+        <attribute name="country" optional="YES" attributeType="String" defaultValueString="" indexed="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO" defaultDateTimeInterval="0"/>
+        <attribute name="displayName" optional="YES" attributeType="String" defaultValueString="" indexed="YES"/>
+        <attribute name="id" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES" indexed="YES"/>
+        <attribute name="isFavorite" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES" indexed="YES"/>
+        <attribute name="latitude" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="longitude" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="name" optional="YES" attributeType="String" defaultValueString="" indexed="YES"/>
+        <attribute name="searchableText" optional="YES" attributeType="String" defaultValueString="" indexed="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" defaultDateTimeInterval="0"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+</model>

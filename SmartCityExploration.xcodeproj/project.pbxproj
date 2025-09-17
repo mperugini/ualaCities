@@ -29,6 +29,7 @@
 		764D466344347EC80B08FB22 /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3EAC43C9CE446EEC4418364 /* AppCoordinator.swift */; };
 		76A52E2FA4DF653371B864D4 /* DataSourceInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4FCE4371C7E1493384D7949 /* DataSourceInfo.swift */; };
 		79AE2CA93E8012CD284F9243 /* LoadCitiesUseCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2604BB85275813448BF757A /* LoadCitiesUseCase.swift */; };
+		81EF38332E7B13D500E5B074 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81EF38322E7B13D100E5B074 /* EmptyStateView.swift */; };
 		84DB2E3E555ACD46B3736EE8 /* Coordinate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 932661D624C01FEE05940ECF /* Coordinate.swift */; };
 		8F1C105412B0A82B987CEDC5 /* CityRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88C4ECD0F385E8AA89F0A6C8 /* CityRepository.swift */; };
 		919630EF72909DA738B81260 /* SmartCityError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 824CB96C01C536F784C19133 /* SmartCityError.swift */; };
@@ -83,6 +84,7 @@
 		6CE5F2841C2BD20B6CF1BB73 /* WeatherDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherDataSource.swift; sourceTree = "<group>"; };
 		6CF1A9175CBF0BD1AEC0C680 /* ErrorLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorLogger.swift; sourceTree = "<group>"; };
 		73AAE1F64C4003665BE07B82 /* WeatherService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherService.swift; sourceTree = "<group>"; };
+		81EF38322E7B13D100E5B074 /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
 		824CB96C01C536F784C19133 /* SmartCityError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartCityError.swift; sourceTree = "<group>"; };
 		8276067578FB12980732C636 /* CityDataModel.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CityDataModel.xcdatamodel; sourceTree = "<group>"; };
 		88C4ECD0F385E8AA89F0A6C8 /* CityRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityRepository.swift; sourceTree = "<group>"; };
@@ -111,6 +113,7 @@
 		0B6EAF3B67A496590ED840D8 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				81EF38322E7B13D100E5B074 /* EmptyStateView.swift */,
 				4236D89B82F29392C7DF72EC /* InfoRow.swift */,
 				9561A177B0B46D528D3687CF /* SectionHeader.swift */,
 				4B45C1F44BD831549C67345D /* WeatherSectionView.swift */,
@@ -415,6 +418,7 @@
 			files = (
 				764D466344347EC80B08FB22 /* AppCoordinator.swift in Sources */,
 				2004285EC66889A9F6E5D310 /* AppDelegate.swift in Sources */,
+				81EF38332E7B13D500E5B074 /* EmptyStateView.swift in Sources */,
 				0363C5AD4479B9DC0297125A /* City.swift in Sources */,
 				BEB14E82199CD5EC1652007B /* CityDataModel.xcdatamodeld in Sources */,
 				E0835FA84584E4367984B3BC /* CityDetailView.swift in Sources */,

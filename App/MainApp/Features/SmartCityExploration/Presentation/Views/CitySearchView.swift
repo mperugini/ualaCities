@@ -19,6 +19,19 @@ public struct CitySearchView: View {
         horizontalSizeClass == .compact
     }
     
+    private var emptyStateType: EmptyStateType {
+        if viewModel.isSearching {
+            return .searching
+        } else if viewModel.showOnlyFavorites {
+            return .favorites
+        } else if let totalCities = viewModel.dataSourceInfo?.totalCities, totalCities > 0 {
+            return .readyToSearch
+        } else {
+            return .general
+        }
+    }
+
+    
     public var body: some View {
         NavigationStack {
             Group {
@@ -28,7 +41,7 @@ public struct CitySearchView: View {
                     combinedView
                 }
             }
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.automatic)
             .refreshable {
                 await viewModel.refreshData()
             }
@@ -187,7 +200,7 @@ public struct CitySearchView: View {
             }
             
             if viewModel.displayedCities.isEmpty && !viewModel.isSearchLoading {
-                emptyStateView
+                EmptyStateView(type: emptyStateType)
             }
         }
         .listStyle(.plain)
@@ -225,46 +238,6 @@ public struct CitySearchView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemBackground))
-    }
-    
-    // MARK: - Empty State
-    private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: viewModel.isSearching ? "magnifyingglass" : "building.2")
-                .font(.system(size: 48))
-                .foregroundColor(.secondary)
-            
-            Text(emptyStateTitle)
-                .font(.headline)
-                .foregroundColor(.secondary)
-            
-            Text(emptyStateMessage)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .padding(40)
-        .frame(maxWidth: .infinity)
-    }
-    
-    private var emptyStateTitle: String {
-        if viewModel.isSearching {
-            return "No Cities Found"
-        } else if viewModel.showOnlyFavorites {
-            return "No Favorite Cities"
-        } else {
-            return "No Cities Available"
-        }
-    }
-    
-    private var emptyStateMessage: String {
-        if viewModel.isSearching {
-            return "Try adjusting your search terms or check the spelling."
-        } else if viewModel.showOnlyFavorites {
-            return "Add cities to your favorites by tapping the heart icon."
-        } else {
-            return "Pull down to refresh or check your internet connection."
-        }
     }
     
     // MARK: - Navigation

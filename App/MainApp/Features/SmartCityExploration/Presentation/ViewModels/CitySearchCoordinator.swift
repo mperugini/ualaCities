@@ -63,9 +63,6 @@ public final class CitySearchCoordinator: ObservableObject {
             self?.handleError(error)
         }
         
-        errorHandlingViewModel.onErrorOccurred = { [weak self] error in
-            self?.handleError(error)
-        }
     }
     
     // MARK: - Public Methods

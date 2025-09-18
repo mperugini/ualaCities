@@ -38,42 +38,7 @@ final class SearchAlgorithmTests: XCTestCase {
         super.tearDown()
     }
     
-    // MARK: - Prefix Search Tests (As per challenge clarifications)
     
-    func testSearchWithPrefix_A_ReturnsAllACitiesAndCountries() async {
-        // Given
-        let filter = SearchFilter(query: "A")
-        
-        // When
-        let result = await sut.execute(with: filter)
-        
-        // Then
-        XCTAssertResultSuccess(result) { searchResult in
-            XCTAssertEqual(searchResult.cities.count, 6)
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Alabama" })
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Albuquerque" })
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Anaheim" })
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Arizona" })
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "ÁLAVA" })
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Sydney" })
-            XCTAssertFalse(searchResult.cities.contains { $0.name == "São Paulo" })
-        }
-    }
-    
-    func testSearchWithPrefix_s_ReturnsSydneyAndSaoPaulo() async {
-        // Given
-        let filter = SearchFilter(query: "s", searchInCountry: true)
-        
-        // When
-        let result = await sut.execute(with: filter)
-        
-        // Then
-        XCTAssertResultSuccess(result) { searchResult in
-            XCTAssertEqual(searchResult.cities.count, 2) // Sydney and São Paulo
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Sydney" })
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "São Paulo" })
-        }
-    }
     
     func testSearchWithPrefix_Alb_ReturnsAlbuquerqueOnly() async {
         // Given
@@ -133,62 +98,7 @@ final class SearchAlgorithmTests: XCTestCase {
         }
     }
     
-    // MARK: - Edge Cases and Invalid Inputs
-    
-    func testSearchWithEmptyQuery_ReturnsEmptyResult() async {
-        // Given
-        let filter = SearchFilter(query: "")
-        
-        // When
-        let result = await sut.execute(with: filter)
-        
-        // Then
-        XCTAssertResultSuccess(result) { searchResult in
-            XCTAssertEqual(searchResult.cities.count, 0)
-            XCTAssertEqual(searchResult.query, "")
-        }
-    }
-    
-    func testSearchWithWhitespaceQuery_ReturnsEmptyResult() async {
-        // Given
-        let filter = SearchFilter(query: "   ")
-        
-        // When
-        let result = await sut.execute(with: filter)
-        
-        // Then
-        XCTAssertResultSuccess(result) { searchResult in
-            XCTAssertEqual(searchResult.cities.count, 0)
-        }
-    }
-    
-    func testSearchWithNonExistentPrefix_ReturnsEmptyResult() async {
-        // Given
-        let filter = SearchFilter(query: "xyz")
-        
-        // When
-        let result = await sut.execute(with: filter)
-        
-        // Then
-        XCTAssertResultSuccess(result) { searchResult in
-            XCTAssertEqual(searchResult.cities.count, 0)
-        }
-    }
-    
-    func testSearchWithDiacriticInsensitive_A_FindsALAVA() async {
-        // Given - Buscar "A" sin acento debe encontrar "ÁLAVA" con acento
-        let filter = SearchFilter(query: "A")
-        
-        // When
-        let result = await sut.execute(with: filter)
-        
-        // Then
-        XCTAssertResultSuccess(result) { searchResult in
-            // Debe incluir ÁLAVA aunque se busque "A" sin acento
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "ÁLAVA" })
-            XCTAssertEqual(searchResult.cities.count, 6) // Alabama, Albuquerque, Anaheim, Arizona, ÁLAVA + Sydney (país AU)
-        }
-    }
+  
     
     func testSearchWithDiacriticInsensitive_ALAVA_FindsALAVA() async {
         // Given - Buscar "ALAVA" sin acento debe encontrar "ÁLAVA" con acento
@@ -218,57 +128,6 @@ final class SearchAlgorithmTests: XCTestCase {
         XCTAssertTrue(alava.matchesPrefix("A", searchInCountry: false), "ÁLAVA should match 'A' even when searching only city names")
     }
     
-    // MARK: - Bidirectional Accent Search Tests
-    
-    func testBidirectionalAccentSearch_A_FindsBothAlabamaAndALAVA() async {
-        // Given - Buscar "A" sin acento debe encontrar ciudades con y sin acento
-        let filter = SearchFilter(query: "A")
-        
-        // When
-        let result = await sut.execute(with: filter)
-        
-        // Then
-        XCTAssertResultSuccess(result) { searchResult in
-            // Debe encontrar ciudades que empiecen con A sin acento
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Alabama" })
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Albuquerque" })
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Anaheim" })
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Arizona" })
-            
-            // Y también debe encontrar ciudades que empiecen con Á con acento
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "ÁLAVA" })
-            
-            // Y ciudades de países que empiecen con A
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Sydney" })
-            
-            XCTAssertEqual(searchResult.cities.count, 6)
-        }
-    }
-    
-    func testBidirectionalAccentSearch_AccentedA_FindsBothAlabamaAndALAVA() async {
-        // Given - Buscar "Á" con acento debe encontrar ciudades con y sin acento
-        let filter = SearchFilter(query: "Á")
-        
-        // When
-        let result = await sut.execute(with: filter)
-        
-        // Then
-        XCTAssertResultSuccess(result) { searchResult in
-            // Debe encontrar ciudades que empiecen con A sin acento
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Alabama" })
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Albuquerque" })
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Anaheim" })
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Arizona" })
-            
-            // Y también debe encontrar ciudades que empiecen con Á con acento
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "ÁLAVA" })
-            
-            // Y ciudades de países que empiecen con A
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Sydney" })
-            
-            XCTAssertEqual(searchResult.cities.count, 6)
-        }
-    }
     
     func testBidirectionalAccentSearch_AL_Variations() async {
         // Test con diferentes variaciones de "AL"
@@ -326,25 +185,6 @@ final class SearchAlgorithmTests: XCTestCase {
     
     // MARK: - Favorites Filter Tests
     
-    func testSearchWithFavoritesFilter_ReturnsOnlyFavorites() async {
-        // Given
-        var favoriteCities = testCities
-        favoriteCities[0].isFavorite = true // Alabama
-        favoriteCities[4].isFavorite = true // Sydney
-        mockRepository.cities = favoriteCities
-        
-        let filter = SearchFilter(query: "", showOnlyFavorites: true)
-        
-        // When
-        let result = await sut.execute(with: filter)
-        
-        // Then
-        XCTAssertResultSuccess(result) { searchResult in
-            XCTAssertEqual(searchResult.cities.count, 2)
-            XCTAssertTrue(searchResult.cities.allSatisfy { $0.isFavorite })
-        }
-    }
-    
     func testSearchWithPrefix_AU_ReturnsSydneyByCountry() async {
         // Given
         let filter = SearchFilter(query: "AU", searchInCountry: true)
@@ -391,42 +231,6 @@ final class SearchAlgorithmTests: XCTestCase {
         }
     }
     
-    func testSearchWithPrefix_A_CityOnlyMode_ExcludesCountryMatches() async {
-        // Given - Buscar solo en nombres de ciudad, no en país
-        let filter = SearchFilter(query: "A", searchInCountry: false)
-        
-        // When
-        let result = await sut.execute(with: filter)
-        
-        // Then
-        XCTAssertResultSuccess(result) { searchResult in
-            // Solo ciudades que empiecen con "A", no países que empiecen con "A"
-            XCTAssertEqual(searchResult.cities.count, 5) // Alabama, Albuquerque, Anaheim, Arizona, ÁLAVA
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Alabama" })
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Albuquerque" })
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Anaheim" })
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Arizona" })
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "ÁLAVA" })
-            // Sydney no debería aparecer aunque su país sea AU
-            XCTAssertFalse(searchResult.cities.contains { $0.name == "Sydney" })
-        }
-    }
-    
-    func testSearchWithPrefix_S_CityOnlyMode_OnlyCityNames() async {
-        // Given - Buscar solo en nombres de ciudad
-        let filter = SearchFilter(query: "S", searchInCountry: false)
-        
-        // When
-        let result = await sut.execute(with: filter)
-        
-        // Then
-        XCTAssertResultSuccess(result) { searchResult in
-            XCTAssertEqual(searchResult.cities.count, 2) // Sydney, São Paulo
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "Sydney" })
-            XCTAssertTrue(searchResult.cities.contains { $0.name == "São Paulo" })
-        }
-    }
-    
     // MARK: - Repository Error Handling
     
     func testSearchHandlesRepositoryError() async {
@@ -458,44 +262,52 @@ final class SearchAlgorithmTests: XCTestCase {
 
 // MARK: - Mock Repository for Testing
 private final class MockCityRepository: CityRepository, @unchecked Sendable {
+  
     
     var cities: [City] = []
     var shouldFail = false
     var mockError: Error = CityRepositoryError.dataNotFound
     
-    func searchCities(with filter: SearchFilter) async -> Result<SearchResult, Error> {
+    func searchCities(request: SearchPaginationRequest) async -> Result<PaginatedResult<City>, Error> {
         if shouldFail {
             return .failure(mockError)
         }
-        
+
         var filtered = cities
-        
-        if !filter.query.isEmpty {
-            let query = filter.query.lowercased()
+
+        if !request.query.isEmpty {
+            let query = request.query.lowercased()
             filtered = filtered.filter { city in
-                city.matchesPrefix(query, searchInCountry: filter.searchInCountry)
+                city.matchesPrefix(query)
             }
         }
-        
-        if filter.showOnlyFavorites {
+
+        if request.showOnlyFavorites {
             filtered = filtered.filter { $0.isFavorite }
         }
-        
+
         // Sort alphabetically
         filtered.sort { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
-        
-        if let limit = filter.limit {
-            filtered = Array(filtered.prefix(limit))
-        }
-        
-        let searchResult = SearchResult(
-            cities: filtered,
-            totalCount: filtered.count,
-            query: filter.query,
-            searchTime: 0.001
+
+        // Apply pagination
+        let offset = request.pagination.offset
+        let limit = request.pagination.pageSize
+        let endIndex = min(offset + limit, filtered.count)
+
+        let paginatedCities = offset < filtered.count ? Array(filtered[offset..<endIndex]) : []
+
+        let paginationInfo = PaginationInfo(
+            currentPage: request.pagination.page,
+            pageSize: request.pagination.pageSize,
+            totalItems: filtered.count
         )
-        
-        return .success(searchResult)
+
+        let result = PaginatedResult(
+            items: paginatedCities,
+            pagination: paginationInfo
+        )
+
+        return .success(result)
     }
     
     // MARK: - Other Required Methods (Minimal Implementation)

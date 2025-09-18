@@ -80,117 +80,6 @@ public final class CoreDataLocalDataSource: LocalDataSource {
         }
     }
     
-    // MARK: - Search Operations (Optimized for Performance)
-    public func getAllCities() async -> Result<[City], Error> {
-        do {
-            let cities = try await coreDataStack.performBackgroundTask { context in
-                let request = CityEntity.fetchRequest()
-                request.sortDescriptors = [
-                    NSSortDescriptor(key: "displayName", ascending: true, selector: #selector(NSString.localizedCaseInsensitiveCompare(_:)))
-                ]
-                request.returnsObjectsAsFaults = false
-                
-                let entities = try context.fetch(request)
-                return entities.map { $0.toDomain() }
-            }
-            
-            return .success(cities)
-        } catch {
-            return .failure(CoreDataError.fetchFailed(underlying: error))
-        }
-    }
-    
-    
-    public func searchCities(with filter: SearchFilter) async -> Result<[City], Error> {
-       // let startTime = CFAbsoluteTimeGetCurrent()
-        
-        do {
-            let cities = try await coreDataStack.performBackgroundTask { context in
-                let limit = filter.limit ?? SearchConstants.defaultResultLimit
-                
-                if filter.showOnlyFavorites {
-                    if filter.query.isEmpty {
-                        let request = CityEntity.fetchRequestForFavorites()
-                        let entities = try context.fetch(request)
-                        return entities.map { $0.toDomain() }
-                    } else {
-                        // Priority search for favorites: city name matches first, then country matches
-                        let cityNameRequest = CityEntity.fetchRequestForFavoritesCityNamePrefix(
-                            query: filter.query,
-                            limit: limit
-                        )
-                        let cityNameEntities = try context.fetch(cityNameRequest)
-                        let cityNameResults = cityNameEntities.map { $0.toDomain() }
-                        
-                        // Get IDs of cities already found to avoid duplicates
-                        let foundIds = cityNameEntities.map { $0.id }
-                        
-                        // fetch favorites that match by country (excluding already found ones)
-                        let remainingLimit = max(0, limit - cityNameResults.count)
-                        if remainingLimit > 0 {
-                            let countryRequest = CityEntity.fetchRequestForFavoritesCountryPrefix(
-                                query: filter.query,
-                                excludingIds: foundIds,
-                                limit: remainingLimit
-                            )
-                            let countryEntities = try context.fetch(countryRequest)
-                            let countryResults = countryEntities.map { $0.toDomain() }
-                            
-                            // Combine results: city name matches first, then country matches
-                            return cityNameResults + countryResults
-                        } else {
-                            return cityNameResults
-                        }
-                    }
-                } else {
-                    if filter.query.isEmpty {
-                        let request = CityEntity.fetchRequest()
-                        request.sortDescriptors = [
-                            NSSortDescriptor(key: "displayName", ascending: true, selector: #selector(NSString.localizedCaseInsensitiveCompare(_:)))
-                        ]
-                        request.returnsObjectsAsFaults = false
-                        
-                        let entities = try context.fetch(request)
-                        return entities.map { $0.toDomain() }
-                    } else {
-                        // city name first, then country matches
-                        let cityNameRequest = CityEntity.fetchRequestForCityNamePrefixSearch(
-                            query: filter.query,
-                            limit: limit
-                        )
-                        let cityNameEntities = try context.fetch(cityNameRequest)
-                        let cityNameResults = cityNameEntities.map { $0.toDomain() }
-                        
-                        // Get IDs of cities already found to avoid duplicates
-                        let foundIds = cityNameEntities.map { $0.id }
-                        
-                        // fetch cities that match by country (excluding already found)
-                        let remainingLimit = max(0, limit - cityNameResults.count)
-                        if remainingLimit > 0 {
-                            let countryRequest = CityEntity.fetchRequestForCountryPrefixSearch(
-                                query: filter.query,
-                                excludingIds: foundIds,
-                                limit: remainingLimit
-                            )
-                            let countryEntities = try context.fetch(countryRequest)
-                            let countryResults = countryEntities.map { $0.toDomain() }
-                            
-                            // Combine results: city name matches first, then country matches
-                            return cityNameResults + countryResults
-                        } else {
-                            return cityNameResults
-                        }
-                    }
-                }
-            }
-            
-           // let searchTime = CFAbsoluteTimeGetCurrent() - startTime
-            return .success(cities)
-        } catch {
-            return .failure(CoreDataError.fetchFailed(underlying: error))
-        }
-    }
-    
     // MARK: - Individual City Operations
     public func getCity(by id: Int) async -> Result<City?, Error> {
         do {
@@ -321,5 +210,39 @@ extension CoreDataLocalDataSource {
         }
         
         try await coreDataStack.saveBackgroundContext()
+    }
+
+    // MARK: -  Operations
+    public func getCities(offset: Int, limit: Int) async throws -> [City] {
+        return try await coreDataStack.performBackgroundTask { context in
+            let request = CityEntity.fetchRequest()
+            request.sortDescriptors = [
+                NSSortDescriptor(keyPath: \CityEntity.name, ascending: true),
+                NSSortDescriptor(keyPath: \CityEntity.country, ascending: true)
+            ]
+            request.fetchOffset = offset
+            request.fetchLimit = limit
+
+            let entities = try context.fetch(request)
+            return entities.map { $0.toDomain() }
+        }
+    }
+
+    public func searchCities(with filter: SearchFilter, offset: Int, limit: Int) async throws -> [City] {
+        return try await coreDataStack.performBackgroundTask { context in
+            let request = CityEntity.fetchRequestWithFilter(filter)
+            request.fetchOffset = offset
+            request.fetchLimit = limit
+
+            let entities = try context.fetch(request)
+            return entities.map { $0.toDomain() }
+        }
+    }
+
+    public func getSearchResultsCount(with filter: SearchFilter) async throws -> Int {
+        return try await coreDataStack.performBackgroundTask { context in
+            let request = CityEntity.fetchRequestWithFilter(filter)
+            return try context.count(for: request)
+        }
     }
 }

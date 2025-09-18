@@ -184,8 +184,27 @@ public struct CitySearchView: View {
                     }
                 )
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .onAppear {
+                    // Infinite scroll detection - load more when approaching bottom
+                    viewModel.checkShouldLoadMore(for: city)
+                }
             }
-            
+
+            // Loading indicator for next page
+            if viewModel.isLoadingNextPage {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Loading more cities...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+                .padding()
+                .listRowSeparator(.hidden)
+            }
+
             if viewModel.isSearchLoading {
                 HStack {
                     Spacer()

@@ -5,7 +5,7 @@
 
 import Foundation
 
-// MARK: - Use Case Protocol (Single Responsibility Principle)
+
 public protocol SearchCitiesUseCaseProtocol: Sendable {
     func execute(with filter: SearchFilter) async -> Result<SearchResult, Error>
 }
@@ -15,48 +15,53 @@ public final class SearchCitiesUseCase: SearchCitiesUseCaseProtocol {
     
     private let repository: CityRepository
     
-    // MARK: - Initialization (Dependency Injection)
+    // MARK: - Initialization 
     public init(repository: CityRepository) {
         self.repository = repository
     }
-    
-    // MARK: - Business Logic Implementation
+
+    // MARK: - Use Case Implementation
     public func execute(with filter: SearchFilter) async -> Result<SearchResult, Error> {
-        // Business rule validation
+        // Validate search filter
         guard filter.isValidQuery else {
-            return .failure(SearchUseCaseError.invalidQuery(
-                reason: "Query must be between \(SearchConstants.minimumQueryLength) and \(SearchConstants.maximumQueryLength) characters"
-            ))
+            return .failure(SearchUseCaseError.invalidQuery(reason: "Empty or invalid query"))
+        }
+
+        if filter.query.count < 2 {
+            return .failure(SearchUseCaseError.queryTooShort(minimum: 2))
+        }
+
+        if filter.query.count > 50 {
+            return .failure(SearchUseCaseError.queryTooLong(maximum: 50))
         }
         
-        // Handle empty query case
-        if filter.isEmpty {
-            if filter.showOnlyFavorites {
-                // Show only favorites when filter is empty but favorites flag is set
-                let favoritesResult = await repository.getFavoriteCities()
-                
-                switch favoritesResult {
-                case .success(let cities):
-                    let searchResult = SearchResult(
-                        cities: cities,
-                        totalCount: cities.count,
-                        query: "",
-                        searchTime: 0
-                    )
-                    return .success(searchResult)
-                    
-                case .failure(let error):
-                    return .failure(SearchUseCaseError.searchFailed(error))
-                }
-            } else {
-                // Return empty result for empty query without favorites
-                let emptyResult = SearchResult(cities: [], totalCount: 0, query: "", searchTime: 0)
-                return .success(emptyResult)
+        let searchRequest = SearchPaginationRequest(
+            query: filter.query,
+            pagination: PaginationRequest(page: 0, pageSize: filter.limit ?? SearchConstants.defaultResultLimit),
+            showOnlyFavorites: filter.showOnlyFavorites
+        )
+
+        let startTime = CFAbsoluteTimeGetCurrent()
+        let result = await repository.searchCities(request: searchRequest)
+        let searchTime = CFAbsoluteTimeGetCurrent() - startTime
+
+        switch result {
+        case .success(let paginatedResult):
+            if paginatedResult.items.isEmpty {
+                return .failure(SearchUseCaseError.noResults)
             }
+
+            let searchResult = SearchResult(
+                cities: paginatedResult.items,
+                totalCount: paginatedResult.items.count,
+                query: filter.query,
+                searchTime: searchTime
+            )
+            return .success(searchResult)
+
+        case .failure(let error):
+            return .failure(SearchUseCaseError.searchFailed(error))
         }
-        
-        // Perform the search
-        return await repository.searchCities(with: filter)
     }
 }
 

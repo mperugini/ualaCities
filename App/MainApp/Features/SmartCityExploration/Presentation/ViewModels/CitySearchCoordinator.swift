@@ -26,7 +26,7 @@ public final class CitySearchCoordinator: ObservableObject {
     public init(useCases: UseCaseContainer = UseCaseContainer()) {
         self.useCases = useCases
         
-        self.searchViewModel = SearchViewModel(searchUseCase: useCases.searchUseCase)
+        self.searchViewModel = SearchViewModel(searchUseCase: SearchCitiesUseCase(repository: CityRepositoryFactory.create()))
         self.favoritesViewModel = FavoritesViewModel(favoriteUseCase: useCases.favoriteUseCase)
         self.dataLoadingViewModel = DataLoadingViewModel(loadUseCase: useCases.loadUseCase)
         self.errorHandlingViewModel = ErrorHandlingViewModel()
@@ -63,9 +63,6 @@ public final class CitySearchCoordinator: ObservableObject {
             self?.handleError(error)
         }
         
-        errorHandlingViewModel.onErrorOccurred = { [weak self] error in
-            self?.handleError(error)
-        }
     }
     
     // MARK: - Public Methods

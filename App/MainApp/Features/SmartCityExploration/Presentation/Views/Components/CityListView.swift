@@ -10,17 +10,20 @@ public struct CityListView: View {
     let onCityTap: (City) -> Void
     let onFavoriteToggle: (City) -> Void
     let onInfoTap: (City) -> Void
-    
+    let onScrollToBottom: ((City) -> Void)?
+
     public init(
         cities: [City],
         onCityTap: @escaping (City) -> Void,
         onFavoriteToggle: @escaping (City) -> Void,
-        onInfoTap: @escaping (City) -> Void
+        onInfoTap: @escaping (City) -> Void,
+        onScrollToBottom: ((City) -> Void)? = nil
     ) {
         self.cities = cities
         self.onCityTap = onCityTap
         self.onFavoriteToggle = onFavoriteToggle
         self.onInfoTap = onInfoTap
+        self.onScrollToBottom = onScrollToBottom
     }
     
     public var body: some View {
@@ -33,6 +36,10 @@ public struct CityListView: View {
                     onInfoTap: { onInfoTap(city) }
                 )
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .onAppear {
+                    // Trigger infinite scroll detection
+                    onScrollToBottom?(city)
+                }
             }
         }
         .listStyle(.plain)

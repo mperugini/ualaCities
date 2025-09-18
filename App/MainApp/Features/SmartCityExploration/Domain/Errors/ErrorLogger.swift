@@ -112,12 +112,10 @@ public final class SmartCityErrorLogger: ErrorLogger {
             ])
         }
         
-        // Log adicional para errores de red
         if error.domain == .network {
             logger.notice("Network error detected: \(error.errorDescription ?? "Unknown")")
         }
         
-        // Log adicional para errores de datos
         if error.domain == .data {
             logger.error("Data error detected: \(error.errorDescription ?? "Unknown")")
         }

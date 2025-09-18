@@ -11,6 +11,8 @@ public protocol LoadCitiesUseCaseProtocol: Sendable {
     func forceRefresh() async -> Result<DataSourceInfo, Error>
     func getCityById(_ id: Int) async -> Result<City?, Error>
     func getDataInfo() async -> Result<DataSourceInfo, Error>
+    func getInitialCities() async -> Result<[City], Error>
+    func getCities(request: PaginationRequest) async -> Result<PaginatedResult<City>, Error>
 }
 
 // MARK: - Load Cities Use Case Implementation
@@ -84,13 +86,47 @@ public final class LoadCitiesUseCase: LoadCitiesUseCaseProtocol {
     public func getDataInfo() async -> Result<DataSourceInfo, Error> {
         print("Getting data info for diagnostics...")
         let result = await repository.getDataSourceInfo()
-        
+
         switch result {
         case .success(let info):
             print("Data info retrieved: \(info.totalCities) cities, lastUpdated: \(info.lastUpdated?.description ?? "nil")")
             return .success(info)
         case .failure(let error):
             print("Failed to get data info: \(error)")
+            return .failure(LoadCitiesUseCaseError.dataInfoUnavailable(underlying: error))
+        }
+    }
+
+
+    /// Loads initial cities using pagination (memory efficient)
+    /// Returns the first page of cities instead of loading all cities in memory
+    public func getInitialCities() async -> Result<[City], Error> {
+        print("📄 Loading initial cities using pagination...")
+
+        let request = PaginationRequest(page: 0, pageSize: PaginationConstants.defaultPageSize)
+        let result = await repository.getCities(request: request)
+
+        switch result {
+        case .success(let paginatedResult):
+            print("📄 Successfully loaded initial page: \(paginatedResult.items.count) cities")
+            return .success(paginatedResult.items)
+        case .failure(let error):
+            print("📄 Failed to load initial cities: \(error)")
+            return .failure(LoadCitiesUseCaseError.dataInfoUnavailable(underlying: error))
+        }
+    }
+
+    public func getCities(request: PaginationRequest) async -> Result<PaginatedResult<City>, Error> {
+        print("📄 Loading cities page \(request.page) (size: \(request.pageSize))")
+
+        let result = await repository.getCities(request: request)
+
+        switch result {
+        case .success(let paginatedResult):
+            print("📄 Successfully loaded page \(request.page): \(paginatedResult.items.count) cities")
+            return .success(paginatedResult)
+        case .failure(let error):
+            print("📄 Failed to load page \(request.page): \(error)")
             return .failure(LoadCitiesUseCaseError.dataInfoUnavailable(underlying: error))
         }
     }
@@ -198,5 +234,172 @@ public enum LoadCitiesUseCaseError: Error, LocalizedError, Equatable {
         default:
             return false
         }
+    }
+}
+
+// MARK: - Paginated Load Cities Use Case Protocol
+public protocol PaginatedLoadCitiesUseCaseProtocol: Sendable {
+    func execute(request: PaginationRequest) async -> Result<PaginatedResult<City>, Error>
+    func loadNextPage(currentPage: Int, pageSize: Int) async -> Result<PaginatedResult<City>, Error>
+}
+
+// MARK: - Paginated Load Cities Use Case Implementation
+public final class PaginatedLoadCitiesUseCase: PaginatedLoadCitiesUseCaseProtocol {
+
+    private let repository: CityRepository
+
+    public init(repository: CityRepository) {
+        self.repository = repository
+    }
+
+    public func execute(request: PaginationRequest) async -> Result<PaginatedResult<City>, Error> {
+        print("📄 Loading cities page \(request.page) (size: \(request.pageSize), offset: \(request.offset))")
+
+        let result = await repository.getCities(request: request)
+
+        switch result {
+        case .success(let paginatedResult):
+            print("📄 Successfully loaded page \(request.page): \(paginatedResult.items.count) cities")
+            return .success(paginatedResult)
+
+        case .failure(let error):
+            print("📄 Failed to load page \(request.page): \(error)")
+            return .failure(PaginatedLoadCitiesUseCaseError.dataLoadingFailed(underlying: error))
+        }
+    }
+
+    public func loadNextPage(currentPage: Int, pageSize: Int) async -> Result<PaginatedResult<City>, Error> {
+        let nextPageRequest = PaginationRequest(page: currentPage + 1, pageSize: pageSize)
+        return await execute(request: nextPageRequest)
+    }
+}
+
+// MARK: - Paginated Load Cities Use Case Errors
+public enum PaginatedLoadCitiesUseCaseError: Error, LocalizedError {
+    case dataLoadingFailed(underlying: Error)
+    case invalidPaginationRequest
+    case noMorePages
+
+    public var errorDescription: String? {
+        switch self {
+        case .dataLoadingFailed(let error):
+            return "Failed to load paginated data: \(error.localizedDescription)"
+        case .invalidPaginationRequest:
+            return "Invalid pagination request parameters"
+        case .noMorePages:
+            return "No more pages available"
+        }
+    }
+
+    public var userFriendlyMessage: String {
+        switch self {
+        case .dataLoadingFailed:
+            return "Unable to load cities. Please check your connection."
+        case .invalidPaginationRequest:
+            return "Invalid page request. Please try again."
+        case .noMorePages:
+            return "No more cities to load."
+        }
+    }
+}
+
+// MARK: - Factory
+public final class PaginatedLoadCitiesUseCaseFactory {
+
+    public static func create(repository: CityRepository) -> PaginatedLoadCitiesUseCaseProtocol {
+        return PaginatedLoadCitiesUseCase(repository: repository)
+    }
+}
+
+// MARK: - Paginated Search Cities Use Case Protocol
+public protocol PaginatedSearchCitiesUseCaseProtocol: Sendable {
+    func execute(request: SearchPaginationRequest) async -> Result<PaginatedResult<City>, Error>
+    func loadNextSearchPage(query: String, currentPage: Int, pageSize: Int, showOnlyFavorites: Bool) async -> Result<PaginatedResult<City>, Error>
+}
+
+// MARK: - Paginated Search Cities Use Case Implementation
+public final class PaginatedSearchCitiesUseCase: PaginatedSearchCitiesUseCaseProtocol {
+
+    private let repository: CityRepository
+
+    public init(repository: CityRepository) {
+        self.repository = repository
+    }
+
+    public func execute(request: SearchPaginationRequest) async -> Result<PaginatedResult<City>, Error> {
+        print("🔍📄 Searching '\(request.query)' page \(request.pagination.page) (size: \(request.pagination.pageSize))")
+
+        // Validate query
+        guard !request.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return .failure(PaginatedSearchCitiesUseCaseError.emptyQuery)
+        }
+
+        let result = await repository.searchCities(request: request)
+
+        switch result {
+        case .success(let paginatedResult):
+            print("🔍📄 Search successful: \(paginatedResult.items.count) cities on page \(request.pagination.page)")
+            return .success(paginatedResult)
+
+        case .failure(let error):
+            print("🔍📄 Search failed for '\(request.query)' page \(request.pagination.page): \(error)")
+            return .failure(PaginatedSearchCitiesUseCaseError.searchFailed(underlying: error))
+        }
+    }
+
+    public func loadNextSearchPage(
+        query: String,
+        currentPage: Int,
+        pageSize: Int,
+        showOnlyFavorites: Bool
+    ) async -> Result<PaginatedResult<City>, Error> {
+        let nextPageRequest = SearchPaginationRequest(
+            query: query,
+            pagination: PaginationRequest(page: currentPage + 1, pageSize: pageSize),
+            showOnlyFavorites: showOnlyFavorites
+        )
+        return await execute(request: nextPageRequest)
+    }
+}
+
+// MARK: - Paginated Search Cities Use Case Errors
+public enum PaginatedSearchCitiesUseCaseError: Error, LocalizedError {
+    case emptyQuery
+    case searchFailed(underlying: Error)
+    case invalidSearchRequest
+    case noMoreResults
+
+    public var errorDescription: String? {
+        switch self {
+        case .emptyQuery:
+            return "Search query cannot be empty"
+        case .searchFailed(let error):
+            return "Search failed: \(error.localizedDescription)"
+        case .invalidSearchRequest:
+            return "Invalid search request parameters"
+        case .noMoreResults:
+            return "No more search results available"
+        }
+    }
+
+    public var userFriendlyMessage: String {
+        switch self {
+        case .emptyQuery:
+            return "Please enter a search term."
+        case .searchFailed:
+            return "Search failed. Please try again."
+        case .invalidSearchRequest:
+            return "Invalid search request. Please try again."
+        case .noMoreResults:
+            return "No more results to load."
+        }
+    }
+}
+
+// MARK: - Factory
+public final class PaginatedSearchCitiesUseCaseFactory {
+
+    public static func create(repository: CityRepository) -> PaginatedSearchCitiesUseCaseProtocol {
+        return PaginatedSearchCitiesUseCase(repository: repository)
     }
 }

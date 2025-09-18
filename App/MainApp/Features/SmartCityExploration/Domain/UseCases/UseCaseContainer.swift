@@ -9,25 +9,25 @@ import Foundation
 public final class UseCaseContainer {
     
     // MARK: - Use Cases
-    public let searchUseCase: SearchCitiesUseCaseProtocol
+    public let paginatedSearchUseCase: PaginatedSearchCitiesUseCaseProtocol
     public let favoriteUseCase: FavoriteCitiesUseCaseProtocol
     public let loadUseCase: LoadCitiesUseCaseProtocol
-    
+
     // MARK: - Initialization
     public init() {
         let repository = CityRepositoryFactory.create()
-        
-        self.searchUseCase = SearchCitiesUseCase(repository: repository)
+
+        self.paginatedSearchUseCase = PaginatedSearchCitiesUseCaseFactory.create(repository: repository)
         self.favoriteUseCase = FavoriteCitiesUseCase(repository: repository)
         self.loadUseCase = LoadCitiesUseCase(repository: repository)
     }
-    
+
     public init(
-        searchUseCase: SearchCitiesUseCaseProtocol,
+        paginatedSearchUseCase: PaginatedSearchCitiesUseCaseProtocol,
         favoriteUseCase: FavoriteCitiesUseCaseProtocol,
         loadUseCase: LoadCitiesUseCaseProtocol
     ) {
-        self.searchUseCase = searchUseCase
+        self.paginatedSearchUseCase = paginatedSearchUseCase
         self.favoriteUseCase = favoriteUseCase
         self.loadUseCase = loadUseCase
     }
@@ -35,9 +35,9 @@ public final class UseCaseContainer {
     #if DEBUG
     public static func createMock() -> UseCaseContainer {
         let mockRepository = CityRepositoryFactory.createMock()
-        
+
         return UseCaseContainer(
-            searchUseCase: SearchCitiesUseCase(repository: mockRepository),
+            paginatedSearchUseCase: PaginatedSearchCitiesUseCaseFactory.create(repository: mockRepository),
             favoriteUseCase: FavoriteCitiesUseCase(repository: mockRepository),
             loadUseCase: LoadCitiesUseCase(repository: mockRepository)
         )

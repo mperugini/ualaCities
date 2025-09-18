@@ -195,4 +195,44 @@ extension CityEntity {
         
         return request
     }
+
+    // MARK: - Generic Filter Support for Pagination
+    static func fetchRequestWithFilter(_ filter: SearchFilter) -> NSFetchRequest<CityEntity> {
+        let request = fetchRequest()
+
+        var predicates: [NSPredicate] = []
+
+        // Add favorites filter if needed
+        if filter.showOnlyFavorites {
+            predicates.append(NSPredicate(format: "isFavorite == YES"))
+        }
+
+        // Add search query filter if provided
+        if !filter.query.isEmpty {
+            let normalizedQuery = normalizeQuery(filter.query)
+
+            // Search in both searchableText (city + country) and country specifically
+            let searchPredicates = [
+                NSPredicate(format: "searchableText BEGINSWITH[c] %@", normalizedQuery),
+                NSPredicate(format: "country BEGINSWITH[c] %@", normalizedQuery)
+            ]
+
+            let searchCompoundPredicate = NSCompoundPredicate(orPredicateWithSubpredicates: searchPredicates)
+            predicates.append(searchCompoundPredicate)
+        }
+
+        // Combine all predicates
+        if !predicates.isEmpty {
+            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
+        }
+
+        // Set sort descriptors
+        request.sortDescriptors = [
+            NSSortDescriptor(key: "displayName", ascending: true, selector: #selector(NSString.localizedCaseInsensitiveCompare(_:)))
+        ]
+
+        request.returnsObjectsAsFaults = false
+
+        return request
+    }
 }

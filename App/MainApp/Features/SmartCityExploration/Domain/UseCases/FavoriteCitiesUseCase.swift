@@ -136,18 +136,18 @@ public final class FavoriteCitiesUseCase: FavoriteCitiesUseCaseProtocol {
     
     public func searchFavorites(with query: String) async -> Result<[City], Error> {
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        let filter = SearchFilter(
+
+        let searchRequest = SearchPaginationRequest(
             query: trimmedQuery,
-            showOnlyFavorites: true,
-            limit: SearchConstants.defaultResultLimit
+            pagination: PaginationRequest(page: 0, pageSize: SearchConstants.defaultResultLimit),
+            showOnlyFavorites: true
         )
-        
-        let searchResult = await repository.searchCities(with: filter)
-        
+
+        let searchResult = await repository.searchCities(request: searchRequest)
+
         switch searchResult {
-        case .success(let result):
-            return .success(result.cities)
+        case .success(let paginatedResult):
+            return .success(paginatedResult.items)
         case .failure(let error):
             return .failure(FavoritesUseCaseError.searchFailed(error))
         }

@@ -12,9 +12,10 @@ public protocol LocalDataSource: Sendable {
     func clearAllCities() async throws
     func getCitiesCount() async throws -> Int
     
-    // MARK: - Search Operations  
-    func getAllCities() async -> Result<[City], Error>
-    func searchCities(with filter: SearchFilter) async -> Result<[City], Error>
+    // MARK: - Operations
+    func getCities(offset: Int, limit: Int) async throws -> [City]
+    func searchCities(with filter: SearchFilter, offset: Int, limit: Int) async throws -> [City]
+    func getSearchResultsCount(with filter: SearchFilter) async throws -> Int
     
     // MARK: - Individual City Operations
     func getCity(by id: Int) async -> Result<City?, Error>

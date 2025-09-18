@@ -149,5 +149,22 @@ private final class MockLoadCitiesUseCase: LoadCitiesUseCaseProtocol, @unchecked
     func getDataInfo() async -> Result<DataSourceInfo, Error> {
         .success(mockDataInfo)
     }
+
+
+    func getInitialCities() async -> Result<[City], Error> {
+        if shouldFail {
+            return .failure(mockError)
+        }
+        return .success([])
+    }
+
+    func getCities(request: PaginationRequest) async -> Result<PaginatedResult<City>, Error> {
+        if shouldFail {
+            return .failure(mockError)
+        }
+        let mockPagination = PaginationInfo(currentPage: request.page, pageSize: request.pageSize, totalItems: 100)
+        let mockResult = PaginatedResult<City>(items: [], pagination: mockPagination)
+        return .success(mockResult)
+    }
 }
 #endif

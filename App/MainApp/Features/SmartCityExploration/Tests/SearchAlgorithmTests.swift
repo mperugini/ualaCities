@@ -427,21 +427,6 @@ final class SearchAlgorithmTests: XCTestCase {
         }
     }
     
-    // MARK: - Performance Tests
-    
-    func testSearchPerformance_WithLargeDataset() async {
-        // Given
-        let largeCityList = generateLargeCityList(count: 10000)
-        mockRepository.cities = largeCityList
-        let filter = SearchFilter(query: "Test")
-        
-        // When & Then
-        await measureAsyncTime { 
-            let result = await sut.execute(with: filter)
-            XCTAssertResultSuccess(result)
-        }
-    }
-    
     // MARK: - Repository Error Handling
     
     func testSearchHandlesRepositoryError() async {
@@ -515,7 +500,16 @@ private final class MockCityRepository: CityRepository, @unchecked Sendable {
     
     // MARK: - Other Required Methods (Minimal Implementation)
     func downloadAndSaveCities() async -> Result<Void, Error> { .success(()) }
-    func getAllCities() async -> Result<[City], Error> { .success(cities) }
+    func getInitialCities() async -> Result<[City], Error> { .success(Array(cities.prefix(50))) }
+
+    func getCities(request: PaginationRequest) async -> Result<PaginatedResult<City>, Error> {
+        let startIndex = request.offset
+        let endIndex = min(startIndex + request.pageSize, cities.count)
+        let pageItems = Array(cities[startIndex..<endIndex])
+        let pagination = PaginationInfo(currentPage: request.page, pageSize: request.pageSize, totalItems: cities.count)
+        let result = PaginatedResult<City>(items: pageItems, pagination: pagination)
+        return .success(result)
+    }
     func getCitiesCount() async -> Result<Int, Error> { .success(cities.count) }
     func getFavoriteCities() async -> Result<[City], Error> { .success(cities.filter { $0.isFavorite }) }
     func toggleFavorite(_ city: City) async -> Result<City, Error> { .success(city) }

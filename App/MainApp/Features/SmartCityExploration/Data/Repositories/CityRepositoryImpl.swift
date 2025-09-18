@@ -5,7 +5,7 @@
 
 import Foundation
 
-// MARK: - Repository Implementation (Clean Architecture + SOLID Principles)
+// MARK: - Repository Implementation
 public final class CityRepositoryImpl: CityRepository {
     
     private let localDataSource: LocalDataSource
@@ -49,9 +49,6 @@ public final class CityRepositoryImpl: CityRepository {
         }
     }
     
-    public func getAllCities() async -> Result<[City], Error> {
-        return await localDataSource.getAllCities()
-    }
     
     public func getCitiesCount() async -> Result<Int, Error> {
         do {
@@ -61,30 +58,77 @@ public final class CityRepositoryImpl: CityRepository {
             return .failure(CityRepositoryError.storageError(error))
         }
     }
+
+    // MARK: - Data Loading
+    public func getCities(request: PaginationRequest) async -> Result<PaginatedResult<City>, Error> {
+        do {
+            // Get total count first
+            let totalCount = try await localDataSource.getCitiesCount()
+
+            // Get cities
+            let cities = try await localDataSource.getCities(offset: request.offset, limit: request.pageSize)
+
+            // Build pagination info
+            let paginationInfo = PaginationInfo(
+                currentPage: request.page,
+                pageSize: request.pageSize,
+                totalItems: totalCount
+            )
+
+            let result = PaginatedResult(
+                items: cities,
+                pagination: paginationInfo
+            )
+
+            return .success(result)
+
+        } catch {
+            return .failure(CityRepositoryError.storageError(error))
+        }
+    }
     
-    // MARK: - Search Operations (Optimized for Performance)
-    public func searchCities(with filter: SearchFilter) async -> Result<SearchResult, Error> {
+
+    public func searchCities(request: SearchPaginationRequest) async -> Result<PaginatedResult<City>, Error> {
         let startTime = CFAbsoluteTimeGetCurrent()
-        
+
+        // Create search filter from request
+        let filter = SearchFilter(
+            query: request.query,
+            showOnlyFavorites: request.showOnlyFavorites,
+            limit: nil // No limit here, we'll handle pagination separately
+        )
+
         // Validate search filter
         guard filter.isValidQuery else {
             return .failure(CityRepositoryError.invalidData)
         }
-        
-        let result = await localDataSource.searchCities(with: filter)
-        
-        switch result {
-        case .success(let cities):
-            let searchTime = CFAbsoluteTimeGetCurrent() - startTime
-            let searchResult = SearchResult(
-                cities: cities,
-                totalCount: cities.count,
-                query: filter.query,
-                searchTime: searchTime
+
+        do {
+            // Get total search results count
+            let totalSearchResults = try await localDataSource.getSearchResultsCount(with: filter)
+
+            let cities = try await localDataSource.searchCities(
+                with: filter,
+                offset: request.pagination.offset,
+                limit: request.pagination.pageSize
             )
-            return .success(searchResult)
-            
-        case .failure(let error):
+
+            let paginationInfo = PaginationInfo(
+                currentPage: request.pagination.page,
+                pageSize: request.pagination.pageSize,
+                totalItems: totalSearchResults
+            )
+
+            let result = PaginatedResult(
+                items: cities,
+                pagination: paginationInfo
+            )
+
+            let searchTime = CFAbsoluteTimeGetCurrent() - startTime
+
+            return .success(result)
+
+        } catch {
             return .failure(CityRepositoryError.searchFailed(error))
         }
     }
@@ -203,6 +247,81 @@ public final class CityRepositoryFactory {
 // MARK: - Mock Implementation for Testing
 #if DEBUG
 public final class MockLocalDataSource: LocalDataSource, @unchecked Sendable {
+    public func getCities(offset: Int, limit: Int) async throws -> [City] {
+        lock.lock()
+        defer { lock.unlock() }
+
+        if _shouldFail {
+            throw _mockError
+        }
+
+        let startIndex = offset
+        let endIndex = min(startIndex + limit, _cities.count)
+
+        guard startIndex < _cities.count else {
+            return []
+        }
+
+        return Array(_cities[startIndex..<endIndex])
+    }
+
+    public func searchCities(with filter: SearchFilter, offset: Int, limit: Int) async throws -> [City] {
+        lock.lock()
+        defer { lock.unlock() }
+
+        if _shouldFail {
+            throw _mockError
+        }
+
+        var filteredCities = _cities
+
+        // Apply favorites filter
+        if filter.showOnlyFavorites {
+            filteredCities = filteredCities.filter { $0.isFavorite }
+        }
+
+        // Apply search query filter
+        if !filter.query.isEmpty {
+            filteredCities = filteredCities.filter { city in
+                city.matchesPrefix(filter.query)
+            }
+        }
+
+        let startIndex = offset
+        let endIndex = min(startIndex + limit, filteredCities.count)
+
+        guard startIndex < filteredCities.count else {
+            return []
+        }
+
+        return Array(filteredCities[startIndex..<endIndex])
+    }
+
+    public func getSearchResultsCount(with filter: SearchFilter) async throws -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+
+        if _shouldFail {
+            throw _mockError
+        }
+
+        var filteredCities = _cities
+
+        // Apply favorites filter
+        if filter.showOnlyFavorites {
+            filteredCities = filteredCities.filter { $0.isFavorite }
+        }
+
+        // Apply search query filter
+        if !filter.query.isEmpty {
+            filteredCities = filteredCities.filter { city in
+                city.matchesPrefix(filter.query)
+            }
+        }
+
+        return filteredCities.count
+    }
+    
     
     private let lock = NSLock()
     private var _cities: [City] = []
@@ -266,13 +385,9 @@ public final class MockLocalDataSource: LocalDataSource, @unchecked Sendable {
         return cities.count
     }
     
-    // MARK: - Search Operations
-    public func getAllCities() async -> Result<[City], Error> {
-        if shouldFail { return .failure(mockError) }
-        return .success(cities.sorted { $0.displayName < $1.displayName })
-    }
-    
-    public func searchCities(with filter: SearchFilter) async -> Result<[City], Error> {
+
+
+    public func searchCitiesLegacy(with filter: SearchFilter) async -> Result<[City], Error> {
         if shouldFail { return .failure(mockError) }
         
         var filtered = cities

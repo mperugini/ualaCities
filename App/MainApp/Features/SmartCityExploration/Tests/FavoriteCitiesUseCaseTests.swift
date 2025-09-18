@@ -280,9 +280,17 @@ private final class MockCityRepository: CityRepository, @unchecked Sendable {
         return .success(())
     }
     
-    func getAllCities() async -> Result<[City], Error> {
+
+    func getInitialCities() async -> Result<[City], Error> {
         if shouldFail { return .failure(error) }
         return .success([])
+    }
+
+    func getCities(request: PaginationRequest) async -> Result<PaginatedResult<City>, Error> {
+        if shouldFail { return .failure(error) }
+        let mockPagination = PaginationInfo(currentPage: request.page, pageSize: request.pageSize, totalItems: 100)
+        let mockResult = PaginatedResult<City>(items: [], pagination: mockPagination)
+        return .success(mockResult)
     }
     
     func getCitiesCount() async -> Result<Int, Error> {

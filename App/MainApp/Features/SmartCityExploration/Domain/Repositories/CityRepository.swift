@@ -5,15 +5,17 @@
 
 import Foundation
 
-// MARK: - Repository Protocol (Dependency Inversion Principle)
+// MARK: - Repository Protocol 
 public protocol CityRepository: Sendable {
     // MARK: - Data Loading
     func downloadAndSaveCities() async -> Result<Void, Error>
-    func getAllCities() async -> Result<[City], Error>
     func getCitiesCount() async -> Result<Int, Error>
-    
-    // MARK: - Search Operations 
-    func searchCities(with filter: SearchFilter) async -> Result<SearchResult, Error>
+
+    // MARK: - Data Loading
+    func getCities(request: PaginationRequest) async -> Result<PaginatedResult<City>, Error>
+
+    // MARK: - Search Operations
+    func searchCities(request: SearchPaginationRequest) async -> Result<PaginatedResult<City>, Error>
     
     // MARK: - Favorites Management
     func getFavoriteCities() async -> Result<[City], Error>

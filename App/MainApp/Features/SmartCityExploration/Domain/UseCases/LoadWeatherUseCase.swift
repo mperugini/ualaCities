@@ -22,16 +22,12 @@ public final class LoadWeatherUseCase: LoadWeatherUseCaseProtocol {
     
     // MARK: - Business Logic Implementation
     public func execute(for city: City) async -> Result<WeatherInfo, Error> {
-        print("UseCase: Loading weather for \(city.name), \(city.country)")
-        
         let result = await weatherRepository.getWeather(for: city)
-        
+
         switch result {
         case .success(let weather):
-            print("UseCase: Weather loaded successfully for \(city.name): \(Int(weather.temperature))°C")
             return .success(weather)
         case .failure(let error):
-            print("UseCase: Failed to load weather for \(city.name): \(error.localizedDescription)")
             return .failure(LoadWeatherUseCaseError.weatherLoadFailed(cityName: city.name, underlying: error))
         }
     }

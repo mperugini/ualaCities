@@ -52,6 +52,7 @@ public final class CitySearchViewModel: ObservableObject {
     @Published public var currentSearchPage = 0
     @Published public var canLoadMoreSearch = true
     private var lastSearchQuery = ""
+    private var lastSuccessfulResults: [City] = []
     
     // MARK: - Dependencies (Dependency Injection)
     private let loadCitiesUseCase: LoadCitiesUseCaseProtocol
@@ -61,6 +62,7 @@ public final class CitySearchViewModel: ObservableObject {
     // MARK: - Private Properties
     private var searchTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
+    private var lastLoadMoreCheck: Date = .distantPast
     
     // MARK: - Initialization
     public init(
@@ -143,12 +145,21 @@ public final class CitySearchViewModel: ObservableObject {
     public func performSearch() async {
         // Cancel any existing search
         searchTask?.cancel()
-        
+
         searchTask = Task { @MainActor in
             let trimmedQuery = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-            
+
             if trimmedQuery.isEmpty {
                 searchResults = []
+                lastSuccessfulResults = []
+                return
+            }
+
+            // Prevent redundant searches for the same query when we already have results < pageSize
+            if trimmedQuery == lastSearchQuery &&
+               !searchResults.isEmpty &&
+               searchResults.count < pageSize &&
+               !canLoadMoreSearch {
                 return
             }
             
@@ -157,6 +168,7 @@ public final class CitySearchViewModel: ObservableObject {
                 currentSearchPage = 0
                 canLoadMoreSearch = true
                 searchResults.removeAll()
+                lastSuccessfulResults.removeAll()
                 lastSearchQuery = trimmedQuery
             }
 
@@ -164,7 +176,6 @@ public final class CitySearchViewModel: ObservableObject {
         }
     }
 
-    /// Performs paginated search (initial or next page)
     private func performPaginatedSearch(query: String, isInitialSearch: Bool) async {
         if isInitialSearch {
             isSearchLoading = true
@@ -185,14 +196,27 @@ public final class CitySearchViewModel: ObservableObject {
             if !Task.isCancelled {
                 if isInitialSearch {
                     searchResults = paginatedResult.items
+                    // Save successful initial results
+                    if !paginatedResult.items.isEmpty {
+                        lastSuccessfulResults = paginatedResult.items
+                    }
                 } else {
-                    searchResults.append(contentsOf: paginatedResult.items)
+                    // Only append if we actually have new items
+                    if !paginatedResult.items.isEmpty {
+                        searchResults.append(contentsOf: paginatedResult.items)
+                        lastSuccessfulResults = searchResults
+                    } else {
+                        // If we got 0 results on additional page, restore firts results results
+                        searchResults = lastSuccessfulResults
+                    }
                 }
 
                 currentSearchPage += 1
-                canLoadMoreSearch = paginatedResult.hasMorePages && currentSearchPage < maxPages
+                // Only allow more pages if we got a full page of results AND there are more pages
+                canLoadMoreSearch = paginatedResult.hasMorePages &&
+                                  currentSearchPage < maxPages &&
+                                  paginatedResult.items.count >= pageSize
 
-                print("🔍📄 Search page \(currentSearchPage): \(paginatedResult.items.count) results. Total: \(searchResults.count). CanLoadMore: \(canLoadMoreSearch)")
                 clearError()
             }
 
@@ -230,7 +254,7 @@ public final class CitySearchViewModel: ObservableObject {
     
     // MARK: - Private Methods
     private func setupSearchObservation() {
-        // Observe search text changes with proper debouncing
+        // Observe search text changes with debouncing
         $searchText
             .debounce(for: .seconds(SearchConstants.searchDebounceTime), scheduler: DispatchQueue.main)
             .sink { [weak self] searchText in
@@ -320,12 +344,10 @@ public final class CitySearchViewModel: ObservableObject {
     /// Loads the next page of cities (up to maxPages)
     public func loadNextPage() async {
         guard canLoadMore && !isLoadingNextPage && currentPage < maxPages else {
-            print("📄 Cannot load more: page \(currentPage)/\(maxPages), canLoadMore=\(canLoadMore), isLoading=\(isLoadingNextPage)")
             return
         }
 
         isLoadingNextPage = true
-        print("📄 Loading page \(currentPage + 1)/\(maxPages)...")
 
         // Create pagination request and load the page
         let request = PaginationRequest(page: currentPage, pageSize: pageSize)
@@ -342,11 +364,9 @@ public final class CitySearchViewModel: ObservableObject {
             let reachedPageLimit = currentPage >= maxPages
             canLoadMore = hasMoreData && !reachedPageLimit
 
-            print("📄 Loaded page \(currentPage): \(newCities.count) cities. Total: \(cities.count). CanLoadMore: \(canLoadMore)")
 
         case .failure(let error):
             showError("Failed to load more cities: \(error.localizedDescription)")
-            print("📄 Failed to load page \(currentPage + 1): \(error)")
         }
 
         isLoadingNextPage = false
@@ -354,12 +374,27 @@ public final class CitySearchViewModel: ObservableObject {
 
     /// Checks if we should load more cities when user scrolls near the bottom
     public func checkShouldLoadMore(for city: City) {
+        // Debounce to prevent rapid successive calls (e.g., during keyboard dismiss layout changes)
+        let now = Date()
+        guard now.timeIntervalSince(lastLoadMoreCheck) > 0.5 else {
+            return
+        }
+        lastLoadMoreCheck = now
+
         if isSearching {
             // Check for search results pagination
-            guard let index = searchResults.firstIndex(where: { $0.id == city.id }) else { return }
+            guard let index = searchResults.firstIndex(where: { $0.id == city.id }) else {
+                return
+            }
 
-            let threshold = searchResults.count - 10 // Load when 10 items from bottom
-            if index >= threshold && canLoadMoreSearch && !isLoadingNextPage {
+            let threshold = max(0, searchResults.count - 10) // Load when 10 items from bottom, but never negative
+
+            // More conservative conditions: only load more if we have at least pageSize results AND user is actually near the bottom
+            let isNearBottom = index >= threshold && index >= (searchResults.count - 5) // Must be in last 5 items
+            let hasFullPage = searchResults.count >= pageSize
+            let shouldLoad = isNearBottom && hasFullPage && canLoadMoreSearch && !isLoadingNextPage
+
+            if shouldLoad {
                 Task {
                     await loadNextSearchPage()
                 }
@@ -368,8 +403,8 @@ public final class CitySearchViewModel: ObservableObject {
             // Check for regular cities pagination
             guard let index = cities.firstIndex(where: { $0.id == city.id }) else { return }
 
-            let threshold = cities.count - 10 // Load when 10 items from bottom
-            if index >= threshold && canLoadMore && !isLoadingNextPage {
+            let threshold = max(0, cities.count - 10) // Load when 10 items from bottom, but never negative
+            if index >= threshold && canLoadMore && !isLoadingNextPage && cities.count >= 10 {
                 Task {
                     await loadNextPage()
                 }
@@ -379,7 +414,12 @@ public final class CitySearchViewModel: ObservableObject {
 
     /// Loads the next page of search results
     private func loadNextSearchPage() async {
-        guard canLoadMoreSearch && !isLoadingNextPage && !lastSearchQuery.isEmpty else {
+
+        // Extra safety: don't load more if the current search results are less than a full page
+        let hasFullPage = searchResults.count >= pageSize
+        let canReallyLoadMore = canLoadMoreSearch && hasFullPage
+
+        guard canReallyLoadMore && !isLoadingNextPage && !lastSearchQuery.isEmpty else {
             return
         }
 

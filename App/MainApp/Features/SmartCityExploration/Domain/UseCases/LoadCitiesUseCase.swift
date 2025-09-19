@@ -30,45 +30,35 @@ public final class LoadCitiesUseCase: LoadCitiesUseCaseProtocol {
     
     // MARK: - Business Logic Implementation
     public func execute() async -> Result<DataSourceInfo, Error> {
-        print("Starting city data loading process...")
         
         // Check if we have cached data first
         let infoResult = await repository.getDataSourceInfo()
         
         switch infoResult {
         case .success(let info):
-            print("Cache info: totalCities=\(info.totalCities), lastUpdated=\(info.lastUpdated?.description ?? "nil")")
             
             // Business rule: Check if cache is still valid
             if let lastUpdated = info.lastUpdated {
                 let timeSinceUpdate = Date().timeIntervalSince(lastUpdated)
-                let hoursOld = timeSinceUpdate / 3600
-                print("Data is \(String(format: "%.1f", hoursOld)) hours old (limit: \(cacheExpirationInterval/3600) hours)")
                 
                 if timeSinceUpdate < cacheExpirationInterval && info.totalCities > 0 {
-                    print("Using cached data (\(info.totalCities) cities) - cache is still fresh")
                     return .success(info)
                 } else if timeSinceUpdate >= cacheExpirationInterval {
-                    print("Cache expired (\(String(format: "%.1f", hoursOld))h old), downloading fresh data...")
                     return await downloadAndReturnInfo()
                 } else {
-                    print("Cache is fresh but no cities found, downloading...")
                     return await downloadAndReturnInfo()
                 }
             } else {
-                print("No lastUpdated date found, downloading fresh data...")
                 return await downloadAndReturnInfo()
             }
             
         case .failure(let error):
             // No cached data available, download fresh
-            print("No cached data found (error: \(error)), downloading...")
             return await downloadAndReturnInfo()
         }
     }
     
     public func forceRefresh() async -> Result<DataSourceInfo, Error> {
-        print("Force refreshing city data...")
         return await downloadAndReturnInfo()
     }
     
@@ -84,15 +74,12 @@ public final class LoadCitiesUseCase: LoadCitiesUseCaseProtocol {
     }
     
     public func getDataInfo() async -> Result<DataSourceInfo, Error> {
-        print("Getting data info for diagnostics...")
         let result = await repository.getDataSourceInfo()
 
         switch result {
         case .success(let info):
-            print("Data info retrieved: \(info.totalCities) cities, lastUpdated: \(info.lastUpdated?.description ?? "nil")")
             return .success(info)
         case .failure(let error):
-            print("Failed to get data info: \(error)")
             return .failure(LoadCitiesUseCaseError.dataInfoUnavailable(underlying: error))
         }
     }
@@ -101,32 +88,26 @@ public final class LoadCitiesUseCase: LoadCitiesUseCaseProtocol {
     /// Loads initial cities using pagination (memory efficient)
     /// Returns the first page of cities instead of loading all cities in memory
     public func getInitialCities() async -> Result<[City], Error> {
-        print("📄 Loading initial cities using pagination...")
 
         let request = PaginationRequest(page: 0, pageSize: PaginationConstants.defaultPageSize)
         let result = await repository.getCities(request: request)
 
         switch result {
         case .success(let paginatedResult):
-            print("📄 Successfully loaded initial page: \(paginatedResult.items.count) cities")
             return .success(paginatedResult.items)
         case .failure(let error):
-            print("📄 Failed to load initial cities: \(error)")
             return .failure(LoadCitiesUseCaseError.dataInfoUnavailable(underlying: error))
         }
     }
 
     public func getCities(request: PaginationRequest) async -> Result<PaginatedResult<City>, Error> {
-        print("📄 Loading cities page \(request.page) (size: \(request.pageSize))")
 
         let result = await repository.getCities(request: request)
 
         switch result {
         case .success(let paginatedResult):
-            print("📄 Successfully loaded page \(request.page): \(paginatedResult.items.count) cities")
             return .success(paginatedResult)
         case .failure(let error):
-            print("📄 Failed to load page \(request.page): \(error)")
             return .failure(LoadCitiesUseCaseError.dataInfoUnavailable(underlying: error))
         }
     }
@@ -142,7 +123,6 @@ public final class LoadCitiesUseCase: LoadCitiesUseCaseProtocol {
             
             switch infoResult {
             case .success(let info):
-                print("Successfully loaded \(info.totalCities) cities")
                 return .success(info)
                 
             case .failure(let error):
@@ -155,7 +135,6 @@ public final class LoadCitiesUseCase: LoadCitiesUseCaseProtocol {
             
             switch fallbackResult {
             case .success(let info) where info.totalCities > 0:
-                print("Download failed, using cached data (\(info.totalCities) cities)")
                 return .success(info)
                 
             case .success, .failure:
@@ -253,17 +232,14 @@ public final class PaginatedLoadCitiesUseCase: PaginatedLoadCitiesUseCaseProtoco
     }
 
     public func execute(request: PaginationRequest) async -> Result<PaginatedResult<City>, Error> {
-        print("📄 Loading cities page \(request.page) (size: \(request.pageSize), offset: \(request.offset))")
 
         let result = await repository.getCities(request: request)
 
         switch result {
         case .success(let paginatedResult):
-            print("📄 Successfully loaded page \(request.page): \(paginatedResult.items.count) cities")
             return .success(paginatedResult)
 
         case .failure(let error):
-            print("📄 Failed to load page \(request.page): \(error)")
             return .failure(PaginatedLoadCitiesUseCaseError.dataLoadingFailed(underlying: error))
         }
     }
@@ -327,7 +303,6 @@ public final class PaginatedSearchCitiesUseCase: PaginatedSearchCitiesUseCasePro
     }
 
     public func execute(request: SearchPaginationRequest) async -> Result<PaginatedResult<City>, Error> {
-        print("🔍📄 Searching '\(request.query)' page \(request.pagination.page) (size: \(request.pagination.pageSize))")
 
         // Validate query
         guard !request.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -338,11 +313,9 @@ public final class PaginatedSearchCitiesUseCase: PaginatedSearchCitiesUseCasePro
 
         switch result {
         case .success(let paginatedResult):
-            print("🔍📄 Search successful: \(paginatedResult.items.count) cities on page \(request.pagination.page)")
             return .success(paginatedResult)
 
         case .failure(let error):
-            print("🔍📄 Search failed for '\(request.query)' page \(request.pagination.page): \(error)")
             return .failure(PaginatedSearchCitiesUseCaseError.searchFailed(underlying: error))
         }
     }
